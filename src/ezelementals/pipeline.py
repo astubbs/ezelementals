@@ -127,7 +127,7 @@ def _print_banner(config: PipelineConfig) -> None:
         f"  flagged frames {'included' if config.include_flagged_in_output else 'excluded'} in output",
         "",
     ]
-    print("\n".join(lines))
+    print("\n".join(lines), flush=True)
 
 
 def run_pipeline_cli() -> None:
@@ -140,7 +140,7 @@ def run_pipeline_cli() -> None:
     parser.add_argument("output", type=Path, nargs="?", help="Output .3fx file (default: <video>.3fx)")
     parser.add_argument("--fps", type=float, default=0.5, help="Frames per second to extract (default: 0.5)")
     parser.add_argument("--ollama-url", default="http://localhost:11434")
-    parser.add_argument("--model", default="qwen2.5-vl:7b")
+    parser.add_argument("--model", default="qwen2.5vl:7b")
     parser.add_argument("--confidence-threshold", type=float, default=0.7)
     parser.add_argument("--frames-dir", type=Path, default=None)
     parser.add_argument("--stub-llm", action="store_true", help="Use random stub instead of Ollama")

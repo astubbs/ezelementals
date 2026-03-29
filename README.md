@@ -106,13 +106,17 @@ This spatial layer is **not yet implemented** — current M0 tracks carry intens
 
 Home Assistant provides the playback position — no audio fingerprinting needed. The `.3fx` file is a `timestamp → effect` lookup table; HA automations pre-trigger devices based on their latency.
 
-| Device        | Latency   |
-|---------------|-----------|
-| Fan           | ~0s       |
-| Mister        | 2–3s      |
-| Radiant heater| 1–2s      |
-| Space heater  | 30–60s    |
-| AC            | 3–5 min   |
+| Device | Type | Channel | Latency | Notes |
+|--------|------|---------|---------|-------|
+| Digital fan (PWM) | Fan | `wind` | ~0s | Speed ∝ intensity |
+| Fan (relay / smart plug) | Fan | `wind` | ~0s | Binary on/off |
+| Water mister — solenoid valve | Mister | `water` | 2–3s | Binary; ceiling or directional mount |
+| Water mister — PWM | Mister | `water` | 2–3s | Variable spray rate |
+| Quartz / halogen radiant heater | Heater | `heat_radiant` | 1–2s | Near-instant burst; fire, explosions |
+| Panel heater (binary) | Heater | `heat_ambient` | 30–60s | Simple on/off |
+| Space heater (thermostat) | Heater | `heat_ambient` | 30–60s | Sustained ambient warmth |
+| Air conditioner | Cooling | `heat_ambient` | 3–5 min | Suppressed for short scenes |
+| Smart bulb (proxy) | Proxy | any | ~0s | Stand-in during testing: blue = wind, cyan = water, red/amber = heat |
 
 ## Usage
 
@@ -120,7 +124,13 @@ Home Assistant provides the playback position — no audio fingerprinting needed
 # Install dependencies
 uv sync
 
-# Generate a .3fx track (requires local Ollama with Qwen2.5-VL)
+# Launch the UI  (opens browser at http://localhost:8765)
+uv run ezelementals-ui
+
+# Build the frontend first (required on first run / after UI changes)
+cd ui && npm install && npm run build && cd ..
+
+# Generate a .3fx track via CLI (requires local Ollama with Qwen2.5-VL)
 bin/generate-track.sh movie.mkv
 
 # Output defaults to movie.3fx — or specify explicitly:
@@ -151,11 +161,25 @@ bin/test.sh
 
 ```
 src/ezelementals/
-├── extract.py      # ffmpeg frame + spectrogram extraction
-├── classify.py     # Ollama inference pipeline (or stub mode)
-├── compress.py     # run-length encode → .3fx
-├── pipeline.py     # CLI orchestrator
-└── ha_client.py    # Home Assistant playback + device control
+├── extract.py          # ffmpeg frame + spectrogram extraction
+├── classify.py         # Ollama inference pipeline (or stub mode)
+├── compress.py         # run-length encode → .3fx
+├── pipeline.py         # CLI orchestrator
+├── ha_client.py        # Home Assistant playback + device control
+└── ui/                 # Web UI (FastAPI + React)
+    ├── server.py       # FastAPI app entry point
+    ├── config.py       # JSON config manager (~/.config/ezelementals/)
+    ├── routes/         # REST API routes
+    ├── ws/             # WebSocket encoder stream
+    ├── jobs/           # Async encode job manager
+    └── static/         # Built React frontend (from ui/)
+
+ui/                     # React + Vite frontend source
+├── src/
+│   ├── pages/          # Library, Encoder, Editor, Player, ReviewQueue, DeviceConfig, Settings
+│   ├── components/     # EffectTrail, EffectLanes, FrameViewer, WorkerCard, DeviceRack, Wizard
+│   └── lib/            # api.ts, websocket.ts, colors.ts
+└── vite.config.ts      # Proxies /api and /ws to FastAPI; builds into ui/static/
 ```
 
 ## Related

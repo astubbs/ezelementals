@@ -3,7 +3,7 @@
 # Idempotent — safe to call even if Ollama is already running.
 set -e
 
-MODEL="qwen2.5-vl:7b"
+MODEL="qwen2.5vl:7b"
 
 if ! command -v ollama > /dev/null 2>&1; then
     echo "error: ollama is not installed."

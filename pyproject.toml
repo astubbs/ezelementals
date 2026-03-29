@@ -12,6 +12,11 @@ dependencies = [
     "matplotlib>=3.8",
     "numpy>=1.26",
     "scipy>=1.12",
+    # UI server
+    "fastapi>=0.111",
+    "uvicorn[standard]>=0.29",
+    "websockets>=12.0",
+    "python-multipart>=0.0.9",
 ]
 
 [project.optional-dependencies]
@@ -25,6 +30,7 @@ dev = [
 
 [project.scripts]
 ezelementals-pipeline = "ezelementals.pipeline:run_pipeline_cli"
+ezelementals-ui = "ezelementals.ui.server:run_ui"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/ezelementals"]

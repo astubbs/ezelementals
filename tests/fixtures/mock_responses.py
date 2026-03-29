@@ -62,7 +62,7 @@ MISSING_FIELD_CLASSIFICATION = {
 def ollama_response(classification_dict: dict) -> dict:
     """Wrap a classification dict in the Ollama API response envelope."""
     return {
-        "model": "qwen2.5-vl:7b",
+        "model": "qwen2.5vl:7b",
         "response": json.dumps(classification_dict),
         "done": True,
     }
@@ -71,7 +71,7 @@ def ollama_response(classification_dict: dict) -> dict:
 def ollama_raw_response(raw_text: str) -> dict:
     """Wrap raw text (e.g. malformed) in the Ollama API response envelope."""
     return {
-        "model": "qwen2.5-vl:7b",
+        "model": "qwen2.5vl:7b",
         "response": raw_text,
         "done": True,
     }
