@@ -84,6 +84,24 @@ Intensity scale: `0` = none, `1` = subtle, `2` = moderate, `3` = intense.
 
 Two-pass mode available: 7B flags uncertain frames, 32B re-classifies them (~20–30% of total).
 
+### Spatial effects model (target design)
+
+The goal is an **Atmos-like spatial model for physical effects** — not just intensity, but direction and character, decoded at playback time to however many physical devices you have installed.
+
+**Wind** is the most spatially expressive channel. A scene inside a storm has wind coming from all directions and shifting; a racing scene has strong frontal wind. The `.3fx` track carries directional metadata (`frontal`, `side`, `rear`, `surround`), and the playback engine maps that to your fan layout — just as an Atmos renderer maps a point audio source to your speaker array. A system with one fan gets a simple speed value; a system with front/side/rear fans gets independent speeds that simulate directionality.
+
+**Water** splits into two types with different hardware implications:
+- *Rain / overhead precipitation* — prefers ceiling-mounted mist emitters; intensity controls spray volume
+- *Directional spray* — e.g. waves, splashes, waterfalls — directional metadata points at the source, playback maps to mist emitters closest to that direction
+
+**Heat** stays closer to ambient character than direction:
+- *Ambient heat* (`heat_ambient`) — sustained warmth from a space heater; suits deserts, jungles, enclosed spaces
+- *Radiant heat* (`heat_radiant`) — sharp burst from quartz/halogen elements; suits explosions, fire flash, muzzle flare
+
+The `.3fx` format is designed to carry this richer metadata while remaining backwards-compatible — a playback system with only a single front fan and no misters simply ignores directional and water fields it can't use.
+
+This spatial layer is **not yet implemented** — current M0 tracks carry intensity only. It is the target for M2+.
+
 ### Playback
 
 Home Assistant provides the playback position — no audio fingerprinting needed. The `.3fx` file is a `timestamp → effect` lookup table; HA automations pre-trigger devices based on their latency.
