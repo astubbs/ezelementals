@@ -13,4 +13,18 @@ if ! command -v uv > /dev/null 2>&1; then
     exit 1
 fi
 
+# Auto-start Ollama unless running in stub mode
+USE_STUB=0
+for arg in "$@"; do
+    if [ "$arg" = "--stub-llm" ]; then
+        USE_STUB=1
+        break
+    fi
+done
+
+if [ "$USE_STUB" = "0" ]; then
+    SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+    "$SCRIPT_DIR/start-ollama.sh"
+fi
+
 uv run ezelementals-pipeline "$@"

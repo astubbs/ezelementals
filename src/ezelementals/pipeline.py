@@ -7,6 +7,7 @@ import contextlib
 import logging
 import sys
 import tempfile
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -48,6 +49,8 @@ def run_pipeline(config: PipelineConfig) -> PipelineResult:
         else:
             raise FileNotFoundError(f"Video not found: {config.video_path}")
 
+    t_total = time.monotonic()
+
     with contextlib.ExitStack() as stack:
         if config.frames_dir:
             frames_dir = Path(config.frames_dir)
@@ -56,21 +59,25 @@ def run_pipeline(config: PipelineConfig) -> PipelineResult:
             frames_dir = Path(stack.enter_context(tempfile.TemporaryDirectory()))
 
         logger.info("Extracting frames from %s at %.2f fps", config.video_path, config.fps)
+        t0 = time.monotonic()
         samples = extract_frames(config.video_path, frames_dir, config.fps)
-        logger.info("Extracted %d frames", len(samples))
-
-        logger.info("Extracting spectrograms")
         samples = extract_spectrograms(config.video_path, frames_dir, samples)
+        t_extract = time.monotonic() - t0
+        logger.info("Extracted %d frames in %.1fs", len(samples), t_extract)
 
         logger.info("Classifying %d samples", len(samples))
+        t0 = time.monotonic()
         results: list[ClassificationResult] = classify_batch(
             samples,
             config.classify_config,
             on_progress=lambda i, n: logger.info("  %d/%d", i, n),
         )
+        t_classify = time.monotonic() - t0
 
+        t0 = time.monotonic()
         entries = compress_results(results, include_flagged=config.include_flagged_in_output)
         stats = compression_stats(results, entries)
+        t_compress = time.monotonic() - t0
         logger.info(
             "Compressed %d frames → %d entries (ratio %.1fx, %d flagged)",
             stats["input_frames"],
@@ -82,6 +89,13 @@ def run_pipeline(config: PipelineConfig) -> PipelineResult:
         config.output_path.parent.mkdir(parents=True, exist_ok=True)
         write_3fx(entries, config.output_path)
         logger.info("Wrote %s", config.output_path)
+
+        stats["timings"] = {
+            "extract_s": t_extract,
+            "classify_s": t_classify,
+            "compress_s": t_compress,
+            "total_s": time.monotonic() - t_total,
+        }
 
         return PipelineResult(
             fx_entries=entries,
@@ -157,8 +171,14 @@ def run_pipeline_cli() -> None:
     except (FileNotFoundError, RuntimeError) as exc:
         print(f"\n  error: {exc}", file=sys.stderr)
         sys.exit(1)
+    t = result.stats["timings"]
+    classify_fps = result.stats["input_frames"] / t["classify_s"] if t["classify_s"] > 0 else 0
     print(
         f"\n  ✓ done — {result.stats['output_entries']} entries "
         f"({result.stats['compression_ratio']:.1f}x compression, "
         f"{result.stats['flagged_count']} flagged)\n"
+        f"    extract {t['extract_s']:.1f}s"
+        f"   classify {t['classify_s']:.1f}s ({classify_fps:.2f} fps)"
+        f"   compress {t['compress_s']:.1f}s"
+        f"   total {t['total_s']:.1f}s\n"
     )
