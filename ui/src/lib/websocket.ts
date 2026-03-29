@@ -20,6 +20,14 @@ export interface WsEvent {
   [key: string]: unknown
 }
 
+export type EncodePhase =
+  | 'idle'
+  | 'extracting_frames'
+  | 'extracting_spectrograms'
+  | 'classifying'
+  | 'compressing'
+  | 'done'
+
 export interface EncoderState {
   connected: boolean
   events: WsEvent[]
@@ -28,6 +36,8 @@ export interface EncoderState {
   workers: Record<number, { frameIndex: number; timestampS: number; lastResult?: WsEvent; inferenceMs?: number }>
   done: boolean
   error: string | null
+  currentPhase: EncodePhase
+  statusMessage: string | null
 }
 
 const EMPTY: EncoderState = {
@@ -38,6 +48,8 @@ const EMPTY: EncoderState = {
   workers: {},
   done: false,
   error: null,
+  currentPhase: 'idle',
+  statusMessage: null,
 }
 
 export function useEncoderWs(jobId: string | null) {
@@ -98,8 +110,15 @@ export function useEncoderWs(jobId: string | null) {
             etaS: event.eta_s as number | null,
           }
         }
+        if (event.type === 'status') {
+          next.statusMessage = event.message as string
+          if (event.phase) {
+            next.currentPhase = event.phase as EncodePhase
+          }
+        }
         if (event.type === 'done' || event.type === 'cancelled') {
           next.done = true
+          next.currentPhase = 'done'
         }
         if (event.type === 'error') {
           next.error = event.message as string

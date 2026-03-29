@@ -103,22 +103,27 @@ class EncodeJob:
             ]
 
         # ── Extract frames ───────────────────────────────────────────────────
-        self._emit({"type": "status", "message": "Extracting frames…"})
+        log.info("[%s] Extracting frames from %s at %.2f fps", self.job_id, video_path.name, fps)
+        self._emit({"type": "status", "message": f"Extracting frames at {fps} fps…", "phase": "extracting_frames"})
         tmp_dir = tempfile.mkdtemp(prefix="ezelementals_")
         frames_dir = Path(tmp_dir)
         try:
             samples: list[FrameSample] = extract_frames(video_path, frames_dir, fps=fps)
         except Exception as exc:
+            log.error("[%s] extract_frames failed: %s", self.job_id, exc)
             self.status = S_ERROR
             self.error = str(exc)
             self._emit({"type": "error", "worker": 0, "frame_index": -1, "message": str(exc)})
             return
 
+        log.info("[%s] Extracted %d frames", self.job_id, len(samples))
+        self._emit({"type": "status", "message": f"Extracted {len(samples)} frames. Generating spectrograms…", "phase": "extracting_spectrograms", "total_frames": len(samples)})
+
         # ── Extract spectrograms ─────────────────────────────────────────────
-        self._emit({"type": "status", "message": "Extracting spectrograms…"})
         try:
             samples = extract_spectrograms(video_path, frames_dir, samples)
         except Exception as exc:
+            log.error("[%s] extract_spectrograms failed: %s", self.job_id, exc)
             self.status = S_ERROR
             self.error = str(exc)
             self._emit({"type": "error", "worker": 0, "frame_index": -1, "message": str(exc)})
@@ -126,13 +131,15 @@ class EncodeJob:
 
         total = len(samples)
         self.progress["total"] = total
+        n_workers = len(worker_cfgs)
+        log.info("[%s] Spectrograms ready. Starting classification of %d frames with %d worker(s)", self.job_id, total, n_workers)
+        self._emit({"type": "status", "message": f"Classifying {total} frames with {n_workers} worker(s)…", "phase": "classifying"})
         self._emit({"type": "progress", "completed": 0, "total": total, "eta_s": None})
 
         # ── Classify frames (parallel workers) ──────────────────────────────
         results = []
         completed = 0
         start_time = time.monotonic()
-        n_workers = len(worker_cfgs)
 
         def _process_frame(args: tuple[int, FrameSample, int]) -> Any:
             """Run in thread pool. Returns ClassificationResult or None on cancel."""
@@ -233,7 +240,8 @@ class EncodeJob:
         # ── Compress + write ─────────────────────────────────────────────────
         from ezelementals.compress import compress_results
 
-        self._emit({"type": "status", "message": "Compressing and writing .3fx…"})
+        log.info("[%s] Classification complete. Compressing %d results…", self.job_id, len(results))
+        self._emit({"type": "status", "message": "Compressing and writing .3fx…", "phase": "compressing"})
         entries = compress_results(results)
         write_3fx(entries, output_path)
 
@@ -241,6 +249,7 @@ class EncodeJob:
         self.flagged_count = flagged
         self.output_path = str(output_path)
         self.status = S_DONE
+        log.info("[%s] Done. Written %s  flagged=%d", self.job_id, output_path, flagged)
         self._emit(
             {
                 "type": "done",

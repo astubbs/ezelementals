@@ -54,6 +54,7 @@ export default function Encoder() {
   const workerDefs = appSettings?.ollama_instances ?? [{ url: 'http://localhost:11434', model: 'qwen2.5-vl:7b' }]
   const progress = state.progress
   const pct = progress && progress.total > 0 ? Math.round((progress.completed / progress.total) * 100) : 0
+  const isExtractingPhase = state.currentPhase === 'extracting_frames' || state.currentPhase === 'extracting_spectrograms'
 
   if (!videoPath) {
     return (
@@ -101,8 +102,28 @@ export default function Encoder() {
             />
           </div>
 
-          {/* Worker cards */}
-          {started && (
+          {/* Extraction phase banner — shown while frames/spectrograms are being extracted */}
+          {started && isExtractingPhase && (
+            <div className="bg-slate-900 rounded-lg p-4 border border-slate-700 flex items-center gap-3">
+              <div className="shrink-0">
+                <svg className="animate-spin w-5 h-5 text-blue-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                </svg>
+              </div>
+              <div className="min-w-0">
+                <div className="text-sm font-medium text-slate-200">
+                  {state.currentPhase === 'extracting_frames' ? 'Extracting Frames' : 'Generating Spectrograms'}
+                </div>
+                {state.statusMessage && (
+                  <div className="text-xs text-slate-400 mt-0.5 truncate">{state.statusMessage}</div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Worker cards — shown during and after classification */}
+          {started && !isExtractingPhase && (
             <div className="bg-slate-900 rounded-lg p-3 border border-slate-800">
               <div className="text-xs text-slate-500 uppercase tracking-wider mb-2">Workers</div>
               <div className="flex flex-wrap gap-3">
@@ -128,15 +149,21 @@ export default function Encoder() {
           {/* Progress bar */}
           {started && (
             <div className="bg-slate-900 rounded-lg p-3 border border-slate-800">
-              <div className="flex justify-between text-xs text-slate-400 mb-1.5">
-                <span>{progress?.completed ?? 0} / {progress?.total ?? '…'} frames</span>
-                <span>
-                  {progress?.etaS ? `ETA ${fmtEta(progress.etaS)}` : state.done ? '✓ Complete' : 'Calculating…'}
-                </span>
-              </div>
+              {isExtractingPhase ? (
+                <div className="text-xs text-slate-400 mb-1.5">
+                  {state.statusMessage ?? 'Preparing…'}
+                </div>
+              ) : (
+                <div className="flex justify-between text-xs text-slate-400 mb-1.5">
+                  <span>{progress?.completed ?? 0} / {progress?.total ?? '…'} frames</span>
+                  <span>
+                    {progress?.etaS ? `ETA ${fmtEta(progress.etaS)}` : state.done ? '✓ Complete' : 'Calculating…'}
+                  </span>
+                </div>
+              )}
               <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
                 <div className="h-full bg-blue-500 rounded-full transition-all duration-300"
-                  style={{ width: `${pct}%` }} />
+                  style={{ width: isExtractingPhase ? '0%' : `${pct}%` }} />
               </div>
               {state.done && (
                 <div className="mt-2 text-xs text-green-400">

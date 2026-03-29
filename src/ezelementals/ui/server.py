@@ -94,9 +94,27 @@ else:
 # ---------------------------------------------------------------------------
 
 
+def _configure_logging() -> None:
+    """
+    Set up logging so both uvicorn and the ezelementals pipeline are visible
+    on the same console.  Without this, extract/classify/compress log at WARNING
+    only and encode jobs appear silent in the server terminal.
+    """
+    fmt = "%(asctime)s  %(levelname)-8s  %(name)s  %(message)s"
+    logging.basicConfig(level=logging.WARNING, format=fmt)
+
+    # Uvicorn's own loggers (access + error)
+    for name in ("uvicorn", "uvicorn.access", "uvicorn.error"):
+        logging.getLogger(name).setLevel(logging.INFO)
+
+    # Full ezelementals pipeline — INFO so frame extraction, classification
+    # progress, and compression steps all appear in the server console.
+    logging.getLogger("ezelementals").setLevel(logging.INFO)
+
+
 def run_ui(host: str = "0.0.0.0", port: int = 8765, open_browser: bool = True) -> None:
     """Entry point called by `ezelementals-ui` console script."""
-    logging.basicConfig(level=logging.INFO, format="%(levelname)s  %(name)s  %(message)s")
+    _configure_logging()
 
     if open_browser:
         import threading
