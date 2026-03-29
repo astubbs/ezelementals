@@ -142,7 +142,7 @@ bin/test.sh
 |------|---------|-------------|
 | `--fps` | `0.5` | Frames to extract per second of video. `0.5` = one frame every 2s, `0.33` = every 3s. Higher = more detail, longer processing. |
 | `--ollama-url` | `http://localhost:11434` | Ollama API endpoint |
-| `--model` | `qwen2.5vl:7b` | Ollama model name |
+| `--model` | `qwen2.5-vl:7b` | Ollama model name |
 | `--confidence-threshold` | `0.7` | Results below this are flagged for review |
 | `--frames-dir` | *(temp)* | Directory to write extracted frames (kept after run if set) |
 | `--stub-llm` | off | Skip Ollama, return random values — for testing without a GPU |
