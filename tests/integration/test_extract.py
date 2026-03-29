@@ -39,7 +39,7 @@ def test_generate_spectrogram_produces_png(tmp_path):
     _generate_spectrogram(audio, output)
     assert output.exists()
     img = Image.open(output)
-    assert img.mode == "L"
+    assert img.mode in ("RGB", "RGBA")
     assert img.size[0] > 0 and img.size[1] > 0
 
 

@@ -10,8 +10,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import librosa
+import matplotlib.image
 import numpy as np
-from PIL import Image
 
 logger = logging.getLogger(__name__)
 
@@ -39,23 +39,27 @@ def _generate_spectrogram(
     sr: int = 22050,
     n_mels: int = 128,
 ) -> None:
-    """Compute mel spectrogram from audio array and save as greyscale PNG."""
+    """Compute mel spectrogram from audio array and save as magma-colormap PNG.
+
+    Uses a colormap (magma) rather than greyscale so the image matches the training
+    distribution of Qwen2.5-VL: every audio ML paper renders spectrograms with a
+    colormap, so the model's feature detectors are calibrated for chromatic spectrograms.
+    """
     if len(audio_array) == 0:
         audio_array = np.zeros(sr, dtype=np.float32)
 
     mel = librosa.feature.melspectrogram(y=audio_array, sr=sr, n_mels=n_mels)
     db = librosa.power_to_db(mel, ref=np.max) if mel.max() > 0 else mel
 
-    # Normalise to 0–255
+    # Normalise to [0, 1] for matplotlib imsave
     db_min, db_max = db.min(), db.max()
     if db_max > db_min:
-        normalised = ((db - db_min) / (db_max - db_min) * 255).astype(np.uint8)
+        normalised = (db - db_min) / (db_max - db_min)
     else:
-        normalised = np.zeros_like(db, dtype=np.uint8)
+        normalised = np.zeros_like(db)
 
     # Flip vertically so low frequencies are at the bottom
-    img = Image.fromarray(np.flipud(normalised), mode="L")
-    img.save(output_path)
+    matplotlib.image.imsave(output_path, np.flipud(normalised), cmap="magma")
 
 
 def extract_frames(
