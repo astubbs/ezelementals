@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import contextlib
 import logging
+import sys
 import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -39,8 +40,13 @@ def run_pipeline(config: PipelineConfig) -> PipelineResult:
     config.video_path = Path(config.video_path)
     config.output_path = Path(config.output_path)
 
+    # If the path doesn't exist, try looking in common locations like Downloads
     if not config.video_path.exists():
-        raise FileNotFoundError(f"Video not found: {config.video_path}")
+        downloads_path = Path.home() / "Downloads" / config.video_path.name
+        if downloads_path.exists():
+            config.video_path = downloads_path
+        else:
+            raise FileNotFoundError(f"Video not found: {config.video_path}")
 
     with contextlib.ExitStack() as stack:
         if config.frames_dir:
@@ -120,11 +126,15 @@ def run_pipeline_cli() -> None:
     parser.add_argument("output", type=Path, nargs="?", help="Output .3fx file (default: <video>.3fx)")
     parser.add_argument("--fps", type=float, default=0.5, help="Frames per second to extract (default: 0.5)")
     parser.add_argument("--ollama-url", default="http://localhost:11434")
-    parser.add_argument("--model", default="qwen2.5vl:7b")
+    parser.add_argument("--model", default="qwen2.5-vl:7b")
     parser.add_argument("--confidence-threshold", type=float, default=0.7)
     parser.add_argument("--frames-dir", type=Path, default=None)
     parser.add_argument("--stub-llm", action="store_true", help="Use random stub instead of Ollama")
     args = parser.parse_args()
+
+    if not args.video.exists():
+        print(f"error: video not found: {args.video}", file=sys.stderr)
+        sys.exit(1)
 
     output = args.output or args.video.with_suffix(".3fx")
 
@@ -142,7 +152,11 @@ def run_pipeline_cli() -> None:
     )
 
     _print_banner(config)
-    result = run_pipeline(config)
+    try:
+        result = run_pipeline(config)
+    except (FileNotFoundError, RuntimeError) as exc:
+        print(f"\n  error: {exc}", file=sys.stderr)
+        sys.exit(1)
     print(
         f"\n  ✓ done — {result.stats['output_entries']} entries "
         f"({result.stats['compression_ratio']:.1f}x compression, "
