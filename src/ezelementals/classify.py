@@ -52,7 +52,7 @@ class ClassificationResult:
 @dataclass
 class ClassifyConfig:
     ollama_base_url: str = "http://localhost:11434"
-    model: str = "qwen2.5vl:7b"
+    model: str = "qwen2.5-vl:7b"
     confidence_threshold: float = 0.7
     timeout_s: float = 30.0
     prompt_template: str = field(default_factory=lambda: DEFAULT_PROMPT)

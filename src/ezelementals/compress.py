@@ -1,4 +1,10 @@
-"""Compress classification results into .3fx entries via run-length encoding."""
+"""Compress classification results into .3fx entries via run-length encoding.
+
+Note: wind_direction and water_type from ClassificationResult are intentionally
+dropped here — the .3fx spec only carries intensity values. The full
+ClassificationResult data (including direction) is retained in
+PipelineResult.classification_results for future use in M2 directional control.
+"""
 
 from __future__ import annotations
 
@@ -39,6 +45,9 @@ def compress_results(
     tuples are collapsed to a single entry at the first timestamp of that run.
     Results must be sorted by timestamp_s.
     """
+    assert all(
+        results[i].timestamp_s <= results[i + 1].timestamp_s for i in range(len(results) - 1)
+    ), "results must be sorted by timestamp_s before calling compress_results"
     filtered = [r for r in results if include_flagged or not r.flagged_for_review]
     if not filtered:
         return []

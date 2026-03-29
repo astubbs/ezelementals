@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import logging
 import tempfile
 from dataclasses import dataclass, field
@@ -41,9 +42,12 @@ def run_pipeline(config: PipelineConfig) -> PipelineResult:
     if not config.video_path.exists():
         raise FileNotFoundError(f"Video not found: {config.video_path}")
 
-    with tempfile.TemporaryDirectory() as _tmpdir:
-        frames_dir = Path(config.frames_dir) if config.frames_dir else Path(_tmpdir)
-        frames_dir.mkdir(parents=True, exist_ok=True)
+    with contextlib.ExitStack() as stack:
+        if config.frames_dir:
+            frames_dir = Path(config.frames_dir)
+            frames_dir.mkdir(parents=True, exist_ok=True)
+        else:
+            frames_dir = Path(stack.enter_context(tempfile.TemporaryDirectory()))
 
         logger.info("Extracting frames from %s at %.2f fps", config.video_path, config.fps)
         samples = extract_frames(config.video_path, frames_dir, config.fps)

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import re
 import subprocess
 import tempfile
@@ -11,6 +12,8 @@ from pathlib import Path
 import librosa
 import numpy as np
 from PIL import Image
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -84,6 +87,9 @@ def extract_frames(
     ]
 
     result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.returncode != 0:
+        logger.warning("ffmpeg exited with code %d:\n%s", result.returncode, result.stderr)
+        raise RuntimeError(f"ffmpeg failed (exit {result.returncode}) — see logs for details")
     # ffmpeg writes filter output to stderr even on success
     timestamps = _parse_showinfo_timestamps(result.stderr)
 
@@ -115,6 +121,9 @@ def extract_spectrograms(
     For each sample, extracts a window_s-second audio clip centred on the
     frame timestamp, computes a mel spectrogram, and saves it as a PNG.
     Returns updated FrameSamples with spectrogram_path set.
+
+    # TODO M1: parallelise with ThreadPoolExecutor — at 0.5fps a 2hr film
+    # produces ~3600 frames, each requiring a separate ffmpeg subprocess.
     """
     video_path = Path(video_path)
     output_dir = Path(output_dir)

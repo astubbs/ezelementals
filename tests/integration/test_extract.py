@@ -115,7 +115,6 @@ def test_extract_spectrograms_window_centering(tmp_path):
 
     fake_wav = tmp_path / "fake.wav"
 
-
     with patch("subprocess.run", mock_run), \
          patch("tempfile.NamedTemporaryFile") as mock_tmp, \
          patch("librosa.load", return_value=(np.zeros(22050, dtype=np.float32), 22050)):
