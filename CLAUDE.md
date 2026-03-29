@@ -2,6 +2,11 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Rules
+
+- **Keep documentation in sync.** Any change to CLI flags, defaults, behaviour, or architecture must be reflected in README.md and CLAUDE.md in the same commit. Never leave docs describing something that no longer matches the code.
+- **Follow the spec.** CLAUDE.md is the authoritative spec. Before implementing, check it. If the spec and the code diverge, flag it rather than silently picking one.
+
 ## Project Overview
 
 **ezElementals** is an automated 4D home theatre effects platform — the "ezBEQ for physical immersion". It generates environmental effect tracks (wind, water, heat) synchronized to movie playback using LLM-based video/audio classification.
@@ -35,7 +40,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```
 Video Input
-  → ffmpeg frame + spectrogram extraction (scene-change detection preferred over fixed fps)
+  → ffmpeg frame + spectrogram extraction (fixed rate: 0.5fps = 1 frame every 2s)
   → LLM classification (Ollama + Qwen2.5-VL — 1 frame + 1 spectrogram per inference call)
   → .3fx track generation
   → Playback integration (Home Assistant media_player)
@@ -59,7 +64,7 @@ Low-confidence frames are flagged for manual review, not silently dropped.
 
 Frame extraction command:
 ```bash
-ffmpeg -i movie.mkv -vf "select='gt(scene,0.4)'" -vsync vfr frames/%04d.jpg
+ffmpeg -i movie.mkv -vf "fps=0.5,showinfo,format=yuvj420p" -fps_mode vfr frames/%04d.jpg
 ```
 
 ### Playback Integration

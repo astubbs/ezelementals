@@ -63,12 +63,12 @@ def test_extract_frames_calls_ffmpeg_with_correct_args(tmp_path):
         )
 
     with patch("subprocess.run", return_value=mock_result) as mock_run:
-        extract_frames(Path("movie.mkv"), tmp_path, scene_threshold=0.4)
+        extract_frames(Path("movie.mkv"), tmp_path, fps=0.5)
 
     cmd = mock_run.call_args[0][0]
     assert "ffmpeg" in cmd
-    assert "select='gt(scene,0.4)'" in " ".join(cmd) or any("0.4" in arg for arg in cmd)
-    assert "-vsync" in cmd
+    assert any("fps=0.5" in arg for arg in cmd)
+    assert "-fps_mode" in cmd
     assert "vfr" in cmd
 
 
@@ -91,16 +91,16 @@ def test_extract_frames_returns_correct_count(tmp_path):
     assert samples[2].timestamp_s == pytest.approx(4.608)
 
 
-def test_extract_frames_custom_threshold(tmp_path):
+def test_extract_frames_custom_fps(tmp_path):
     mock_result = MagicMock()
     mock_result.stderr = ""
     mock_result.returncode = 0
 
     with patch("subprocess.run", return_value=mock_result) as mock_run:
-        extract_frames(Path("movie.mkv"), tmp_path, scene_threshold=0.6)
+        extract_frames(Path("movie.mkv"), tmp_path, fps=0.33)
 
     cmd_str = " ".join(mock_run.call_args[0][0])
-    assert "0.6" in cmd_str
+    assert "fps=0.33" in cmd_str
 
 
 def test_extract_spectrograms_window_centering(tmp_path):

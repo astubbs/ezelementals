@@ -10,7 +10,7 @@ from pathlib import Path
 
 from ezelementals.classify import ClassificationResult, ClassifyConfig, classify_batch
 from ezelementals.compress import FxEntry, compress_results, compression_stats, write_3fx
-from ezelementals.extract import FrameSample, extract_frames, extract_spectrograms
+from ezelementals.extract import extract_frames, extract_spectrograms
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +20,7 @@ class PipelineConfig:
     video_path: Path
     output_path: Path
     frames_dir: Path | None = None
-    scene_threshold: float = 0.4
+    fps: float = 0.5
     classify_config: ClassifyConfig = field(default_factory=ClassifyConfig)
     include_flagged_in_output: bool = True
 
@@ -45,10 +45,8 @@ def run_pipeline(config: PipelineConfig) -> PipelineResult:
         frames_dir = Path(config.frames_dir) if config.frames_dir else Path(_tmpdir)
         frames_dir.mkdir(parents=True, exist_ok=True)
 
-        logger.info("Extracting frames from %s", config.video_path)
-        samples: list[FrameSample] = extract_frames(
-            config.video_path, frames_dir, config.scene_threshold
-        )
+        logger.info("Extracting frames from %s at %.2f fps", config.video_path, config.fps)
+        samples = extract_frames(config.video_path, frames_dir, config.fps)
         logger.info("Extracted %d frames", len(samples))
 
         logger.info("Extracting spectrograms")
@@ -83,35 +81,66 @@ def run_pipeline(config: PipelineConfig) -> PipelineResult:
         )
 
 
+def _print_banner(config: PipelineConfig) -> None:
+    cc = config.classify_config
+    lines = [
+        "",
+        "┌─────────────────────────────────────────────┐",
+        "│           ezElementals  ·  M0 spike          │",
+        "└─────────────────────────────────────────────┘",
+        f"  input          {config.video_path}",
+        f"  output         {config.output_path}",
+        f"  frames dir     {config.frames_dir or '(temp)'}",
+        "",
+        "  ── classifier ─────────────────────────────",
+        f"  backend        {'Stub (random, no LLM)' if cc.stub else 'Ollama'}",
+        f"  model          {cc.model}" if not cc.stub else "  model          —",
+        f"  endpoint       {cc.ollama_base_url}" if not cc.stub else "  endpoint       —",
+        f"  confidence ≥   {cc.confidence_threshold}",
+        "",
+        "  ── extraction ─────────────────────────────",
+        f"  sample rate    {config.fps} fps  (1 frame every {1/config.fps:.0f}s)",
+        f"  flagged frames {'included' if config.include_flagged_in_output else 'excluded'} in output",
+        "",
+    ]
+    print("\n".join(lines))
+
+
 def run_pipeline_cli() -> None:
-    logging.basicConfig(level=logging.INFO, format="%(message)s")
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s  %(message)s", datefmt="%H:%M:%S")
 
     parser = argparse.ArgumentParser(
         description="Generate a .3fx effect track from a video file."
     )
     parser.add_argument("video", type=Path, help="Input video file")
-    parser.add_argument("output", type=Path, help="Output .3fx file")
-    parser.add_argument("--scene-threshold", type=float, default=0.4)
+    parser.add_argument("output", type=Path, nargs="?", help="Output .3fx file (default: <video>.3fx)")
+    parser.add_argument("--fps", type=float, default=0.5, help="Frames per second to extract (default: 0.5)")
     parser.add_argument("--ollama-url", default="http://localhost:11434")
     parser.add_argument("--model", default="qwen2.5vl:7b")
     parser.add_argument("--confidence-threshold", type=float, default=0.7)
     parser.add_argument("--frames-dir", type=Path, default=None)
+    parser.add_argument("--stub-llm", action="store_true", help="Use random stub instead of Ollama")
     args = parser.parse_args()
+
+    output = args.output or args.video.with_suffix(".3fx")
 
     config = PipelineConfig(
         video_path=args.video,
-        output_path=args.output,
+        output_path=output,
         frames_dir=args.frames_dir,
-        scene_threshold=args.scene_threshold,
+        fps=args.fps,
         classify_config=ClassifyConfig(
             ollama_base_url=args.ollama_url,
             model=args.model,
             confidence_threshold=args.confidence_threshold,
+            stub=args.stub_llm,
         ),
     )
+
+    _print_banner(config)
     result = run_pipeline(config)
     print(
-        f"Done: {result.stats['output_entries']} entries, "
-        f"compression ratio {result.stats['compression_ratio']:.1f}x, "
-        f"{result.stats['flagged_count']} flagged"
+        f"\n  ✓ done — {result.stats['output_entries']} entries "
+        f"({result.stats['compression_ratio']:.1f}x compression, "
+        f"{result.stats['flagged_count']} flagged)\n"
     )

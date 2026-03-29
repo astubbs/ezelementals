@@ -5,6 +5,8 @@ from __future__ import annotations
 import base64
 import json
 import logging
+import random
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
@@ -54,10 +56,33 @@ class ClassifyConfig:
     confidence_threshold: float = 0.7
     timeout_s: float = 30.0
     prompt_template: str = field(default_factory=lambda: DEFAULT_PROMPT)
+    stub: bool = False  # return random values instead of calling Ollama
+
+
+_WIND_DIRECTIONS = ["frontal", "side", "rear", "none"]
+_WATER_TYPES = ["rain", "spray", "none"]
 
 
 def _clamp(value: int, lo: int = 0, hi: int = 3) -> int:
     return max(lo, min(hi, int(value)))
+
+
+def _classify_stub(frame_index: int, timestamp_s: float) -> ClassificationResult:
+    """Return random effect values — for local testing without Ollama."""
+    rng = random.Random(frame_index)  # seeded per-frame for reproducibility
+    return ClassificationResult(
+        frame_index=frame_index,
+        timestamp_s=timestamp_s,
+        wind=rng.randint(0, 3),
+        wind_direction=rng.choice(_WIND_DIRECTIONS),
+        water=rng.randint(0, 3),
+        water_type=rng.choice(_WATER_TYPES),
+        heat_ambient=rng.randint(0, 3),
+        heat_radiant=rng.randint(0, 3),
+        confidence=round(rng.uniform(0.6, 1.0), 2),
+        flagged_for_review=False,
+        raw_response="<stub>",
+    )
 
 
 def _parse_llm_response(
@@ -110,7 +135,10 @@ def classify_frame(
     config: ClassifyConfig,
     client: httpx.Client | None = None,
 ) -> ClassificationResult:
-    """Classify a single frame via Ollama. Never raises."""
+    """Classify a single frame. Uses stub mode if config.stub is True. Never raises."""
+    if config.stub:
+        return _classify_stub(sample.frame_index, sample.timestamp_s)
+
     own_client = client is None
     if own_client:
         client = httpx.Client(timeout=config.timeout_s)
@@ -169,10 +197,22 @@ def classify_batch(
         client = httpx.Client(timeout=config.timeout_s)
 
     results = []
+    t_start = time.monotonic()
     try:
         for i, sample in enumerate(samples):
             result = classify_frame(sample, config, client=client)
             results.append(result)
+            elapsed = time.monotonic() - t_start
+            rate = (i + 1) / elapsed if elapsed > 0 else 0
+            eta = (len(samples) - i - 1) / rate if rate > 0 else 0
+            flag = " ⚑" if result.flagged_for_review else ""
+            logger.info(
+                "  [%d/%d] t=%.1fs  wind=%d water=%d heat_a=%d heat_r=%d"
+                "  conf=%.2f%s  (%.2f fps, ETA %ds)",
+                i + 1, len(samples), sample.timestamp_s,
+                result.wind, result.water, result.heat_ambient, result.heat_radiant,
+                result.confidence, flag, rate, int(eta),
+            )
             if on_progress:
                 on_progress(i + 1, len(samples))
     finally:

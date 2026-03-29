@@ -58,11 +58,12 @@ def _generate_spectrogram(
 def extract_frames(
     video_path: Path,
     output_dir: Path,
-    scene_threshold: float = 0.4,
+    fps: float = 0.5,
     ffmpeg_bin: str = "ffmpeg",
 ) -> list[FrameSample]:
-    """Extract scene-change frames from video using ffmpeg.
+    """Extract frames from video at a fixed rate using ffmpeg.
 
+    Defaults to 0.5fps (one frame every 2 seconds) as per the M0 spec.
     Uses the showinfo filter to capture per-frame timestamps from stderr.
     Returns FrameSample list sorted by timestamp.
     """
@@ -70,12 +71,14 @@ def extract_frames(
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    filter_str = f"select='gt(scene,{scene_threshold})',showinfo"
+    # format=yuvj420p converts limited-range yuv420p to full-range so the
+    # JPEG encoder accepts it (required for bt709/tv-range source material).
+    filter_str = f"fps={fps},showinfo,format=yuvj420p"
     cmd = [
         ffmpeg_bin,
         "-i", str(video_path),
         "-vf", filter_str,
-        "-vsync", "vfr",
+        "-fps_mode", "vfr",
         "-y",
         str(output_dir / "%04d.jpg"),
     ]
