@@ -68,9 +68,11 @@ class EncodeJob:
 
     def _run(self) -> None:
         """Blocking work — runs in a thread pool."""
+        import tempfile
+
         from ezelementals.classify import ClassifyConfig, classify_frame
-        from ezelementals.compress import FxEntry, write_3fx
-        from ezelementals.extract import FrameSample, extract_frames
+        from ezelementals.compress import write_3fx
+        from ezelementals.extract import FrameSample, extract_frames, extract_spectrograms
 
         params = self.params
         video_path = Path(params["video_path"])
@@ -84,7 +86,7 @@ class EncodeJob:
             worker_cfgs = [
                 ClassifyConfig(
                     ollama_base_url=w.get("url", "http://localhost:11434"),
-                    model=w.get("model", "qwen2.5-vl:7b"),
+                    model=w.get("model", "qwen2.5vl:7b"),
                     confidence_threshold=float(params.get("confidence_threshold", 0.7)),
                     stub=stub,
                 )
@@ -94,7 +96,7 @@ class EncodeJob:
             worker_cfgs = [
                 ClassifyConfig(
                     ollama_base_url=params.get("ollama_url", "http://localhost:11434"),
-                    model=params.get("model", "qwen2.5-vl:7b"),
+                    model=params.get("model", "qwen2.5vl:7b"),
                     confidence_threshold=float(params.get("confidence_threshold", 0.7)),
                     stub=stub,
                 )
@@ -102,8 +104,20 @@ class EncodeJob:
 
         # ── Extract frames ───────────────────────────────────────────────────
         self._emit({"type": "status", "message": "Extracting frames…"})
+        tmp_dir = tempfile.mkdtemp(prefix="ezelementals_")
+        frames_dir = Path(tmp_dir)
         try:
-            samples: list[FrameSample] = extract_frames(video_path, fps=fps)
+            samples: list[FrameSample] = extract_frames(video_path, frames_dir, fps=fps)
+        except Exception as exc:
+            self.status = S_ERROR
+            self.error = str(exc)
+            self._emit({"type": "error", "worker": 0, "frame_index": -1, "message": str(exc)})
+            return
+
+        # ── Extract spectrograms ─────────────────────────────────────────────
+        self._emit({"type": "status", "message": "Extracting spectrograms…"})
+        try:
+            samples = extract_spectrograms(video_path, frames_dir, samples)
         except Exception as exc:
             self.status = S_ERROR
             self.error = str(exc)
@@ -212,6 +226,8 @@ class EncodeJob:
         if self._cancel_event.is_set():
             self.status = S_CANCELLED
             self._emit({"type": "cancelled"})
+            import shutil
+            shutil.rmtree(tmp_dir, ignore_errors=True)
             return
 
         # ── Compress + write ─────────────────────────────────────────────────
@@ -232,6 +248,13 @@ class EncodeJob:
                 "output_path": str(output_path),
             }
         )
+
+        # Clean up temp frames/spectrograms directory
+        import shutil
+        try:
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+        except Exception:
+            pass
 
 
 class JobManager:
