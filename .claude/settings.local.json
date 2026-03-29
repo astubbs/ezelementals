@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(uv sync:*)",
+      "Bash(uv run:*)",
+      "Bash(chmod +x /Users/astubbs/github/ezElementals/bin/test /Users/astubbs/github/ezElementals/bin/pipeline)",
+      "Bash(bin/test -q)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(ffmpeg -i /Users/astubbs/Downloads/19280141-uhd_2160_4096_30fps.mp4 -vf \"select=''''gt\\(scene,0.4\\)'''',showinfo\" -vsync vfr -y /tmp/ez_test_frames/%04d.jpg)",
+      "Bash(mkdir -p /tmp/ez_test_frames)",
+      "Bash(ffmpeg -i /Users/astubbs/Downloads/19280141-uhd_2160_4096_30fps.mp4 -vf \"select=''''gt\\(scene,0.1\\)'''',showinfo,format=yuvj420p\" -vsync vfr -y /tmp/ez_test_frames/%04d.jpg)",
+      "Bash(ffmpeg -i /Users/astubbs/Downloads/19280141-uhd_2160_4096_30fps.mp4 -vf \"select=''''gt\\(scene,0.01\\)'''',showinfo,format=yuvj420p\" -vsync vfr -y /tmp/ez_test_frames/%04d.jpg)",
+      "Bash(git push:*)",
+      "Bash(gh api:*)",
+      "Bash(echo \"exit: $?\")"
+    ]
+  }
+}
