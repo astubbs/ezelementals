@@ -104,7 +104,11 @@ class EncodeJob:
 
         # ── Extract frames ───────────────────────────────────────────────────
         log.info("[%s] Extracting frames from %s at %.2f fps", self.job_id, video_path.name, fps)
-        self._emit({"type": "status", "message": f"Extracting frames at {fps} fps…", "phase": "extracting_frames"})
+        self._emit({
+            "type": "status",
+            "message": f"Extracting frames at {fps} fps…",
+            "phase": "extracting_frames",
+        })
         tmp_dir = tempfile.mkdtemp(prefix="ezelementals_")
         frames_dir = Path(tmp_dir)
         try:
@@ -117,7 +121,12 @@ class EncodeJob:
             return
 
         log.info("[%s] Extracted %d frames", self.job_id, len(samples))
-        self._emit({"type": "status", "message": f"Extracted {len(samples)} frames. Generating spectrograms…", "phase": "extracting_spectrograms", "total_frames": len(samples)})
+        self._emit({
+            "type": "status",
+            "message": f"Extracted {len(samples)} frames. Generating spectrograms…",
+            "phase": "extracting_spectrograms",
+            "total_frames": len(samples),
+        })
 
         # ── Extract spectrograms ─────────────────────────────────────────────
         try:
@@ -132,8 +141,15 @@ class EncodeJob:
         total = len(samples)
         self.progress["total"] = total
         n_workers = len(worker_cfgs)
-        log.info("[%s] Spectrograms ready. Starting classification of %d frames with %d worker(s)", self.job_id, total, n_workers)
-        self._emit({"type": "status", "message": f"Classifying {total} frames with {n_workers} worker(s)…", "phase": "classifying"})
+        log.info(
+            "[%s] Spectrograms ready. Starting classification of %d frames with %d worker(s)",
+            self.job_id, total, n_workers,
+        )
+        self._emit({
+            "type": "status",
+            "message": f"Classifying {total} frames with {n_workers} worker(s)…",
+            "phase": "classifying",
+        })
         self._emit({"type": "progress", "completed": 0, "total": total, "eta_s": None})
 
         # ── Classify frames (parallel workers) ──────────────────────────────

@@ -105,7 +105,6 @@ def test_encode_stub_emits_expected_events(tmp_path: Path) -> None:
       status, frame_start, frame_image (frame + spectrogram), result,
       progress, done.
     """
-    import asyncio
     import threading
 
     output_path = tmp_path / "events.3fx"

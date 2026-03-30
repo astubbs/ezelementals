@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from fastapi import APIRouter
-from fastapi.responses import JSONResponse
 
 from ezelementals.ui.config import load_settings, save_settings
 

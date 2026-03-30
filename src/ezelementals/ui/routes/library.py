@@ -7,7 +7,6 @@ No database; the filesystem is the source of truth.
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 from typing import Any
 

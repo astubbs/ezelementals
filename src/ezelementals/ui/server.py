@@ -11,9 +11,7 @@ Serves:
 
 from __future__ import annotations
 
-import importlib.resources
 import logging
-import os
 import webbrowser
 from pathlib import Path
 
