@@ -41,6 +41,6 @@ def sample_frame_sample(tmp_path, sample_frame_path, sample_spectrogram_path):
 def default_classify_config():
     return ClassifyConfig(
         ollama_base_url="http://localhost:11434",
-        model="qwen2.5-vl:7b",
+        model="qwen2.5vl:7b",
         confidence_threshold=0.7,
     )

@@ -52,9 +52,9 @@ class ClassificationResult:
 @dataclass
 class ClassifyConfig:
     ollama_base_url: str = "http://localhost:11434"
-    model: str = "qwen2.5-vl:7b"
+    model: str = "qwen2.5vl:7b"
     confidence_threshold: float = 0.7
-    timeout_s: float = 30.0
+    timeout_s: float = 120.0
     prompt_template: str = field(default_factory=lambda: DEFAULT_PROMPT)
     stub: bool = False  # return random values instead of calling Ollama
 
@@ -200,6 +200,7 @@ def classify_batch(
     t_start = time.monotonic()
     try:
         for i, sample in enumerate(samples):
+            logger.info("  → [%d/%d] t=%.1fs  sending to Ollama...", i + 1, len(samples), sample.timestamp_s)
             result = classify_frame(sample, config, client=client)
             results.append(result)
             elapsed = time.monotonic() - t_start
