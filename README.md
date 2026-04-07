@@ -1,5 +1,7 @@
 # ezElementals
 
+> **Next:** Pivoting to a broader semantic media database architecture — [see plan](docs/pivot-semantic-media-database.md).
+
 Automated 4D home theatre effects for wind, water, and heat — synchronized to movie playback using LLM-based video/audio classification.
 
 The automated track generator is the unlock that prior projects (HTFanControl) never had, removing the bottleneck of hand-authoring every track.
