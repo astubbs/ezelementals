@@ -8,7 +8,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from ezelementals.ui.jobs.encode_job import JobManager
+from reeldesc.studio.jobs.encode_job import JobManager
 
 router = APIRouter(prefix="/api/encoder", tags=["encoder"])
 

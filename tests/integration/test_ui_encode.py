@@ -17,7 +17,7 @@ from pathlib import Path
 
 import pytest
 
-from ezelementals.ui.jobs.encode_job import S_DONE, S_ERROR, JobManager
+from reeldesc.studio.jobs.encode_job import S_DONE, S_ERROR, JobManager
 
 # The sample video lives in ignored-notes/ (gitignored directory).
 _SAMPLE_VIDEO = Path(__file__).parents[2] / "ignored-notes" / "samples" / "19280141-uhd_2160_4096_30fps.mp4"
@@ -48,7 +48,7 @@ def test_encode_stub_produces_valid_3fx(tmp_path: Path) -> None:
       - have all intensity values in [0, 3]
       - emit frame_start, frame_image, result, progress, and done events
     """
-    from ezelementals.compress import read_3fx
+    from reeldesc.exporters.threefx import read_3fx
 
     output_path = tmp_path / "output.3fx"
     manager = JobManager()

@@ -16,7 +16,7 @@ export default defineConfig({
   },
   // Build output goes into the location FastAPI serves as static files
   build: {
-    outDir: '../src/ezelementals/ui/static',
+    outDir: '../src/reeldesc/studio/static',
     emptyOutDir: true,
   },
 })

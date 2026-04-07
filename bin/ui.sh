@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Launch the ezElementals web UI.
+# Launch the ReelDesc Studio web UI.
 # Builds the frontend if the static dir is missing, then starts the server.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -9,7 +9,7 @@ if ! command -v uv &>/dev/null; then
   exit 1
 fi
 
-STATIC_DIR="src/ezelementals/ui/static"
+STATIC_DIR="src/reeldesc/studio/static"
 
 if [ ! -d "$STATIC_DIR" ] || [ ! -f "$STATIC_DIR/index.html" ]; then
   echo "Frontend not built — building now…"
@@ -24,4 +24,4 @@ if [ ! -d "$STATIC_DIR" ] || [ ! -f "$STATIC_DIR/index.html" ]; then
   echo "Frontend built."
 fi
 
-exec uv run ezelementals-ui "$@"
+exec uv run reeldesc-ui "$@"

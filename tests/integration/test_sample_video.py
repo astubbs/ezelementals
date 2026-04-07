@@ -16,8 +16,8 @@ from pathlib import Path
 
 import pytest
 
-from ezelementals.classify import ClassifyConfig
-from ezelementals.pipeline import PipelineConfig, run_pipeline
+from reeldesc.runner import ClassifyConfig
+from reeldesc.pipeline import PipelineConfig, run_pipeline
 
 # Default location — override with env var
 _DEFAULT_VIDEO = Path("/Users/astubbs/Downloads/19280141-uhd_2160_4096_30fps.mp4")
@@ -31,7 +31,7 @@ pytestmark = pytest.mark.skipif(
 
 def test_extract_produces_frames(tmp_path):
     """ffmpeg should extract at least a handful of frames from the sample clip."""
-    from ezelementals.extract import extract_frames
+    from reeldesc.extractor import extract_frames
 
     frames_dir = tmp_path / "frames"
     # This clip is smooth nature footage — needs a low threshold to find changes

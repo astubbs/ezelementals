@@ -6,7 +6,7 @@ import uuid
 
 from fastapi import APIRouter, HTTPException
 
-from ezelementals.ui.config import load_devices, save_devices
+from reeldesc.studio.config import load_devices, save_devices
 
 router = APIRouter(prefix="/api/devices", tags=["devices"])
 

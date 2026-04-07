@@ -27,4 +27,4 @@ if [ "$USE_STUB" = "0" ]; then
     "$SCRIPT_DIR/start-ollama.sh"
 fi
 
-uv run ezelementals-pipeline "$@"
+uv run reeldesc-pipeline "$@"

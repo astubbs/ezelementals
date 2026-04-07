@@ -15,7 +15,7 @@ import logging
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
-from ezelementals.ui.routes.encoder import manager
+from reeldesc.studio.routes.encoder import manager
 
 log = logging.getLogger(__name__)
 

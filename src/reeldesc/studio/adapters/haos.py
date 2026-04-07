@@ -9,7 +9,7 @@ from typing import Callable
 
 import httpx
 
-from ezelementals.compress import FxEntry
+from reeldesc.exporters.threefx import FxEntry
 
 logger = logging.getLogger(__name__)
 

@@ -12,7 +12,7 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
 
-from ezelementals.ui.config import VIDEO_EXTENSIONS, load_settings
+from reeldesc.studio.config import VIDEO_EXTENSIONS, load_settings
 
 router = APIRouter(prefix="/api/library", tags=["library"])
 

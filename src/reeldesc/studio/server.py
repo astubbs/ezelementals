@@ -1,7 +1,7 @@
 """
 ezElementals UI server.
 
-Entry point: `uv run ezelementals-ui`   (or  python -m ezelementals.ui.server)
+Entry point: `uv run reeldesc-ui`   (or  python -m reeldesc.studio.server)
 
 Serves:
   /api/*        — REST endpoints
@@ -21,9 +21,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from ezelementals.ui.config import is_first_run
-from ezelementals.ui.routes import devices, editor, encoder, library, player, settings
-from ezelementals.ui.ws.encoder_stream import router as ws_router
+from reeldesc.studio.config import is_first_run
+from reeldesc.studio.routes import devices, editor, encoder, library, player, settings
+from reeldesc.studio.ws.encoder_stream import router as ws_router
 
 log = logging.getLogger(__name__)
 
@@ -31,7 +31,7 @@ log = logging.getLogger(__name__)
 # App factory
 # ---------------------------------------------------------------------------
 
-app = FastAPI(title="ezElementals", version="0.1.0")
+app = FastAPI(title="ReelDesc Studio", version="0.1.0")
 
 # Allow Vite dev server (port 5173) during development
 app.add_middleware(
@@ -58,7 +58,7 @@ app.include_router(ws_router)
 # Static SPA serving
 # ---------------------------------------------------------------------------
 
-# The built React app lives at  src/ezelementals/ui/static/
+# The built React app lives at  src/reeldesc/studio/static/
 _STATIC_DIR = Path(__file__).parent / "static"
 
 
@@ -94,7 +94,7 @@ else:
 
 def _configure_logging() -> None:
     """
-    Set up logging so both uvicorn and the ezelementals pipeline are visible
+    Set up logging so both uvicorn and the reeldesc pipeline are visible
     on the same console.  Without this, extract/classify/compress log at WARNING
     only and encode jobs appear silent in the server terminal.
     """
@@ -105,13 +105,13 @@ def _configure_logging() -> None:
     for name in ("uvicorn", "uvicorn.access", "uvicorn.error"):
         logging.getLogger(name).setLevel(logging.INFO)
 
-    # Full ezelementals pipeline — INFO so frame extraction, classification
+    # Full reeldesc pipeline — INFO so frame extraction, classification
     # progress, and compression steps all appear in the server console.
-    logging.getLogger("ezelementals").setLevel(logging.INFO)
+    logging.getLogger("reeldesc").setLevel(logging.INFO)
 
 
 def run_ui(host: str = "0.0.0.0", port: int = 8765, open_browser: bool = True) -> None:
-    """Entry point called by `ezelementals-ui` console script."""
+    """Entry point called by `reeldesc-ui` console script."""
     _configure_logging()
 
     if open_browser:
@@ -125,7 +125,7 @@ def run_ui(host: str = "0.0.0.0", port: int = 8765, open_browser: bool = True) -
         threading.Thread(target=_open, daemon=True).start()
 
     uvicorn.run(
-        "ezelementals.ui.server:app",
+        "reeldesc.studio.server:app",
         host=host,
         port=port,
         reload=False,

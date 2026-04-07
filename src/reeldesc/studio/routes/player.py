@@ -16,7 +16,7 @@ from typing import Any
 import httpx
 from fastapi import APIRouter, HTTPException, Query
 
-from ezelementals.ui.config import load_settings
+from reeldesc.studio.config import load_settings
 
 router = APIRouter(prefix="/api/player", tags=["player"])
 

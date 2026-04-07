@@ -2,8 +2,8 @@
 
 import json
 
-from ezelementals.classify import ClassificationResult
-from ezelementals.compress import (
+from reeldesc.runner import ClassificationResult
+from reeldesc.exporters.threefx import (
     FxEntry,
     compress_results,
     compression_stats,

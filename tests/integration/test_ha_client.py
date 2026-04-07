@@ -3,8 +3,8 @@
 import pytest
 from pytest_httpx import HTTPXMock
 
-from ezelementals.compress import FxEntry
-from ezelementals.ha_client import (
+from reeldesc.exporters.threefx import FxEntry
+from reeldesc.studio.adapters.haos import (
     DeviceConfig,
     HAConfig,
     apply_fx_entry,

@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "ezelementals"
+name = "reeldesc"
 version = "0.1.0"
 requires-python = ">=3.11"
 dependencies = [
@@ -29,11 +29,11 @@ dev = [
 ]
 
 [project.scripts]
-ezelementals-pipeline = "ezelementals.pipeline:run_pipeline_cli"
-ezelementals-ui = "ezelementals.ui.server:run_ui"
+reeldesc-pipeline = "reeldesc.pipeline:run_pipeline_cli"
+reeldesc-ui = "reeldesc.studio.server:run_ui"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/ezelementals"]
+packages = ["src/reeldesc"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

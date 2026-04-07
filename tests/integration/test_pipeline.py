@@ -9,7 +9,7 @@ import numpy as np
 import pytest
 from pytest_httpx import HTTPXMock
 
-from ezelementals.pipeline import PipelineConfig, run_pipeline
+from reeldesc.pipeline import PipelineConfig, run_pipeline
 from tests.fixtures.mock_responses import FURY_ROAD_SANDSTORM, VALID_CLASSIFICATION, ollama_response
 
 FIXTURES_DIR = Path(__file__).parent.parent / "fixtures"

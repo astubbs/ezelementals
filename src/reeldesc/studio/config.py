@@ -1,5 +1,5 @@
 """
-Configuration manager — reads/writes ~/.config/ezelementals/{settings,devices}.json.
+Configuration manager — reads/writes ~/.config/reeldesc/{settings,devices}.json.
 All settings have safe defaults so the app starts cleanly on first run.
 """
 
@@ -9,7 +9,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-CONFIG_DIR = Path.home() / ".config" / "ezelementals"
+CONFIG_DIR = Path.home() / ".config" / "reeldesc"
 SETTINGS_PATH = CONFIG_DIR / "settings.json"
 DEVICES_PATH = CONFIG_DIR / "devices.json"
 

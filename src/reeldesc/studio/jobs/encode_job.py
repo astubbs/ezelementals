@@ -70,9 +70,9 @@ class EncodeJob:
         """Blocking work — runs in a thread pool."""
         import tempfile
 
-        from ezelementals.classify import ClassifyConfig, classify_frame
-        from ezelementals.compress import write_3fx
-        from ezelementals.extract import FrameSample, extract_frames, extract_spectrograms
+        from reeldesc.runner import ClassifyConfig, classify_frame
+        from reeldesc.exporters.threefx import write_3fx
+        from reeldesc.extractor import FrameSample, extract_frames, extract_spectrograms
 
         params = self.params
         video_path = Path(params["video_path"])
@@ -109,7 +109,7 @@ class EncodeJob:
             "message": f"Extracting frames at {fps} fps…",
             "phase": "extracting_frames",
         })
-        tmp_dir = tempfile.mkdtemp(prefix="ezelementals_")
+        tmp_dir = tempfile.mkdtemp(prefix="reeldesc_")
         frames_dir = Path(tmp_dir)
         try:
             samples: list[FrameSample] = extract_frames(video_path, frames_dir, fps=fps)
@@ -254,7 +254,7 @@ class EncodeJob:
             return
 
         # ── Compress + write ─────────────────────────────────────────────────
-        from ezelementals.compress import compress_results
+        from reeldesc.exporters.threefx import compress_results
 
         log.info("[%s] Classification complete. Compressing %d results…", self.job_id, len(results))
         self._emit({"type": "status", "message": "Compressing and writing .3fx…", "phase": "compressing"})

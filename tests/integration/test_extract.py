@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 from PIL import Image
 
-from ezelementals.extract import (
+from reeldesc.extractor import (
     FrameSample,
     _generate_spectrogram,
     _parse_showinfo_timestamps,

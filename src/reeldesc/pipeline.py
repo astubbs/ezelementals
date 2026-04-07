@@ -11,9 +11,9 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from ezelementals.classify import ClassificationResult, ClassifyConfig, classify_batch
-from ezelementals.compress import FxEntry, compress_results, compression_stats, write_3fx
-from ezelementals.extract import extract_frames, extract_spectrograms
+from reeldesc.runner import ClassificationResult, ClassifyConfig, classify_batch
+from reeldesc.exporters.threefx import FxEntry, compress_results, compression_stats, write_3fx
+from reeldesc.extractor import extract_frames, extract_spectrograms
 
 logger = logging.getLogger(__name__)
 
@@ -110,7 +110,7 @@ def _print_banner(config: PipelineConfig) -> None:
     lines = [
         "",
         "┌─────────────────────────────────────────────┐",
-        "│           ezElementals  ·  M0 spike          │",
+        "│             ReelDesc  ·  M0 spike            │",
         "└─────────────────────────────────────────────┘",
         f"  input          {config.video_path}",
         f"  output         {config.output_path}",

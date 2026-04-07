@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from ezelementals.ui.config import load_settings, save_settings
+from reeldesc.studio.config import load_settings, save_settings
 
 router = APIRouter(prefix="/api/settings", tags=["settings"])
 

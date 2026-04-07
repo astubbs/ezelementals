@@ -5,7 +5,7 @@ import json
 import pytest
 from pytest_httpx import HTTPXMock
 
-from ezelementals.classify import (
+from reeldesc.runner import (
     _parse_llm_response,
     classify_batch,
     classify_frame,
@@ -105,7 +105,7 @@ def test_classify_frame_http_error(httpx_mock: HTTPXMock, sample_frame_sample, d
 def test_classify_batch_ordering(httpx_mock: HTTPXMock, tmp_path, default_classify_config):
     from pathlib import Path
 
-    from ezelementals.extract import FrameSample
+    from reeldesc.extractor import FrameSample
 
     fixture_dir = Path(__file__).parent.parent / "fixtures"
     frame_path = fixture_dir / "sample_frame.jpg"
@@ -128,7 +128,7 @@ def test_classify_batch_ordering(httpx_mock: HTTPXMock, tmp_path, default_classi
 def test_classify_batch_continues_on_http_failure(httpx_mock: HTTPXMock, tmp_path, default_classify_config):
     from pathlib import Path
 
-    from ezelementals.extract import FrameSample
+    from reeldesc.extractor import FrameSample
 
     fixture_dir = Path(__file__).parent.parent / "fixtures"
     frame_path = fixture_dir / "sample_frame.jpg"
