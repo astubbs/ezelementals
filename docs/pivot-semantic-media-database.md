@@ -2,7 +2,7 @@
 
 ## Vision
 
-**CineDesc — semantic descriptions for video and playback** *(name TBD, see naming section)*
+**ReelDesc — semantic descriptions for video and playback**
 
 A single open-source pipeline that generates dense semantic understanding of any film — offline, locally, on consumer hardware. From that understanding, multiple output formats are derived automatically: elemental effects tracks, accessibility description tracks, visual description subtitles, and semantic search indexes.
 
@@ -90,7 +90,7 @@ Exports are flags: `--export elemental`, `--export ad`, `--export all`.
 ## Architecture
 
 ```
-cinedesc (core engine)
+reeldesc (core engine)
   ├── extractor         ← frame + spectrogram extraction
   ├── runner            ← Ollama VLM inference engine (generic)
   ├── timeline          ← timeline.jsonl format: read/write/schema
@@ -142,12 +142,12 @@ video.mkv
 
 | Current file | Becomes | Change |
 |---|---|---|
-| `src/ezelementals/extract.py` | `src/cinedesc/extractor.py` | Move, minimal changes |
-| `src/ezelementals/classify.py` | `src/cinedesc/runner.py` + `profiles/elemental.py` | Split prompt from inference engine |
-| `src/ezelementals/compress.py` | `src/cinedesc/exporters/threefx.py` | Rename, same logic |
-| `src/ezelementals/pipeline.py` | `src/cinedesc/pipeline.py` | Add timeline.jsonl output step |
-| `src/ezelementals/ha_client.py` | `src/cinedesc/studio/adapters/haos.py` | Move |
-| `src/ezelementals/ui/` | `src/cinedesc/studio/` | Rename |
+| `src/ezelementals/extract.py` | `src/reeldesc/extractor.py` | Move, minimal changes |
+| `src/ezelementals/classify.py` | `src/reeldesc/runner.py` + `profiles/elemental.py` | Split prompt from inference engine |
+| `src/ezelementals/compress.py` | `src/reeldesc/exporters/threefx.py` | Rename, same logic |
+| `src/ezelementals/pipeline.py` | `src/reeldesc/pipeline.py` | Add timeline.jsonl output step |
+| `src/ezelementals/ha_client.py` | `src/reeldesc/studio/adapters/haos.py` | Move |
+| `src/ezelementals/ui/` | `src/reeldesc/studio/` | Rename |
 | `pyproject.toml` | Update package name, entry points | |
 
 The actual pipeline logic barely changes — it's mostly reorganisation and adding the timeline intermediate step.
@@ -169,20 +169,17 @@ The actual pipeline logic barely changes — it's mostly reorganisation and addi
 
 ## Naming
 
-**Working name: CineDesc** — *"semantic descriptions for video and playback"*
+**ReelDesc** — *"semantic descriptions for video and playback"*
 
-Self-explanatory, memorable. "Cine" is broad enough (cinematography covers any moving image).
-
-**Note:** cineDESK (different spelling, different product) exists as a virtual filmmaking previsualization tool from Zurich University of the Arts. No direct conflict, but proximity noted.
+Double pun: "real descriptions" + "film reel descriptions". Self-explanatory, memorable, untaken on GitHub/PyPI/npm.
 
 **Sub-brands:**
 - **ezElementals** — elemental effects module/community
-- **iWASDb** — community catalogue (houses cinedesc bundles)
+- **iWASDb** — community catalogue (houses reeldesc bundles)
 - **.3fx** (ElementFX) — elemental effects format
 
 **Prior art search (2025-04):**
-- "cinedesc" — no existing project on GitHub, PyPI, or npm
-- "cineDESK" — exists (previsualization tool), different spelling and domain
+- "reeldesc" — no existing project on GitHub, PyPI, or npm
 - Semantic video description databases — no direct FOSS competitor exists for this approach
 
 ---
@@ -191,6 +188,7 @@ Self-explanatory, memorable. "Cine" is broad enough (cinematography covers any m
 
 | Decision | Choice | Rationale |
 |---|---|---|
+| Project name | ReelDesc | Untaken, descriptive, real/reel double pun |
 | Timing | Refactor now | Codebase is small, cost is low, expensive to retrofit later |
 | VLM pass | Monolithic (desc + elemental in one call) | Avoids premature optimisation; AD users grow elemental DB for free |
 | Export pipeline | Separate, configurable passes | Independent downstream transforms; `--export elemental/ad/all` |
@@ -201,6 +199,5 @@ Self-explanatory, memorable. "Cine" is broad enough (cinematography covers any m
 
 ## Open Questions
 
-1. **Final name** — CineDesc is the working name. Alternatives if cineDESK proximity is a concern: SceneDesc, FilmDesc, or others TBD.
-2. **CLI entry points** — `cinedesc generate` + `cinedesc studio`? Or `cinedesc-generate` + `cinedesc-studio`?
-3. **Git catalogue repo structure** — define now or defer until M6?
+1. **CLI entry points** — `reeldesc generate` + `reeldesc studio`? Or `reeldesc-generate` + `reeldesc-studio`?
+2. **Git catalogue repo structure** — define now or defer until M6?
