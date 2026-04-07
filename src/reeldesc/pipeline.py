@@ -11,6 +11,7 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from reeldesc.bundle import BundleMeta, create_bundle
 from reeldesc.exporters.threefx import FxEntry, compress_results, compression_stats, write_3fx
 from reeldesc.extractor import extract_frames, extract_spectrograms
 from reeldesc.runner import ClassifyConfig, classify_batch
@@ -27,6 +28,7 @@ class PipelineConfig:
     fps: float = 0.5
     classify_config: ClassifyConfig = field(default_factory=ClassifyConfig)
     include_flagged_in_output: bool = True
+    exports: list[str] = field(default_factory=lambda: ["elemental"])
 
 
 @dataclass
@@ -35,6 +37,7 @@ class PipelineResult:
     timeline: Timeline
     stats: dict
     output_path: Path
+    bundle_path: Path | None = None
 
 
 def run_pipeline(config: PipelineConfig) -> PipelineResult:
@@ -88,9 +91,26 @@ def run_pipeline(config: PipelineConfig) -> PipelineResult:
             stats["flagged_count"],
         )
 
+        # Write bare .3fx for backwards compatibility
         config.output_path.parent.mkdir(parents=True, exist_ok=True)
         write_3fx(entries, config.output_path)
         logger.info("Wrote %s", config.output_path)
+
+        # Create bundle alongside the .3fx file
+        bundle_path = None
+        bundle_dir = config.output_path.with_suffix(".bundle")
+        export_files: dict[str, Path] = {}
+        if "elemental" in config.exports:
+            export_files["elemental.3fx"] = config.output_path
+
+        meta = BundleMeta(
+            title=config.video_path.stem,
+            generator_version="0.1.0",
+            fps=config.fps,
+            model=config.classify_config.model if not config.classify_config.stub else "stub",
+        )
+        bundle_path = create_bundle(bundle_dir, meta, timeline, exports=export_files)
+        logger.info("Created bundle %s", bundle_path)
 
         stats["timings"] = {
             "extract_s": t_extract,
@@ -104,6 +124,7 @@ def run_pipeline(config: PipelineConfig) -> PipelineResult:
             timeline=timeline,
             stats=stats,
             output_path=config.output_path,
+            bundle_path=bundle_path,
         )
 
 
@@ -146,6 +167,11 @@ def run_pipeline_cli() -> None:
     parser.add_argument("--confidence-threshold", type=float, default=0.7)
     parser.add_argument("--frames-dir", type=Path, default=None)
     parser.add_argument("--stub-llm", action="store_true", help="Use random stub instead of Ollama")
+    parser.add_argument(
+        "--export", action="append", default=None,
+        choices=["elemental", "all"],
+        help="Export formats to generate (default: elemental). Can be repeated.",
+    )
     args = parser.parse_args()
 
     if not args.video.exists():
@@ -153,12 +179,16 @@ def run_pipeline_cli() -> None:
         sys.exit(1)
 
     output = args.output or args.video.with_suffix(".3fx")
+    exports = args.export or ["elemental"]
+    if "all" in exports:
+        exports = ["elemental"]  # expand as more exporters are added
 
     config = PipelineConfig(
         video_path=args.video,
         output_path=output,
         frames_dir=args.frames_dir,
         fps=args.fps,
+        exports=exports,
         classify_config=ClassifyConfig(
             ollama_base_url=args.ollama_url,
             model=args.model,
