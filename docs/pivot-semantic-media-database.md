@@ -182,6 +182,27 @@ Double pun: "real descriptions" + "film reel descriptions". Self-explanatory, me
 - "reeldesc" — no existing project on GitHub, PyPI, or npm
 - Semantic video description databases — no direct FOSS competitor exists for this approach
 
+**Names considered and rejected:**
+
+| Name | Status | Why rejected |
+|---|---|---|
+| cinedesc | Available | Too close to cineDESK (previsualization tool, Zurich University of the Arts + HKAPA) |
+| cineforge | Taken | Existing project |
+| cinescribe | Taken | Existing project |
+| scenewise | Taken | Existing project |
+| scenesense | Taken | GitHub: arpg/SceneSense (video segmentation + ad placement) |
+| reelwise | Taken | Existing project |
+| framewise | Taken | GitHub: hxri-nxrxyxn/framewise (AI posing assistant) + arulvalananto/FrameWise (video analysis) |
+| reelsense | Taken | GitHub user reelsense (110 repos) |
+| cinetag | Taken | GitHub: LarissaOlimpio/CineTag (film sharing platform) |
+| mediamap | Taken | MapMap (open source video mapping / projection software) |
+| scenedesc | Available | Generic, no personality |
+| filmdesc | Available | Too film-specific |
+| reelmap | Available | Less descriptive than reeldesc |
+| scenetag | Available | Less descriptive than reeldesc |
+| frameread | Available | Less descriptive than reeldesc |
+| **reeldesc** | **Available — chosen** | **Double pun (real + reel), self-explanatory, untaken** |
+
 ---
 
 ## Decisions

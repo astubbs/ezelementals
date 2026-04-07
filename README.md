@@ -1,8 +1,12 @@
-# ezElementals
+# ReelDesc
 
-> **Next:** Pivoting to a broader semantic media database architecture — [see plan](docs/pivot-semantic-media-database.md).
+> Semantic descriptions for video and playback.
 
-Automated 4D home theatre effects for wind, water, and heat — synchronized to movie playback using LLM-based video/audio classification.
+An open-source pipeline that generates dense semantic understanding of any film — offline, locally, on consumer hardware. From that understanding, multiple output formats are derived: elemental effects tracks (.3fx), accessibility descriptions, visual description subtitles, and semantic search indexes. One generation pass, many consumers.
+
+**Current status:** Pivoting from ezElementals (4D effects only) to the broader ReelDesc architecture — [see plan](docs/pivot-semantic-media-database.md).
+
+Previously: automated 4D home theatre effects for wind, water, and heat — synchronized to movie playback using LLM-based video/audio classification.
 
 The automated track generator is the unlock that prior projects (HTFanControl) never had, removing the bottleneck of hand-authoring every track.
 
