@@ -76,8 +76,8 @@ def test_classify_frame_happy_path(httpx_mock: HTTPXMock, sample_frame_sample, d
     assert result.heat_ambient == 2
     assert result.confidence == pytest.approx(0.95)
     assert result.flagged_for_review is False
-    assert result.frame_index == 0
-    assert result.timestamp_s == pytest.approx(10.5)
+    assert result.frame_idx == 0
+    assert result.t == pytest.approx(10.5)
 
 
 def test_classify_frame_low_confidence(httpx_mock: HTTPXMock, sample_frame_sample, default_classify_config):
@@ -118,9 +118,9 @@ def test_classify_batch_ordering(httpx_mock: HTTPXMock, tmp_path, default_classi
     results = classify_batch(samples, default_classify_config)
 
     assert len(results) == 3
-    assert results[0].frame_index == 0
-    assert results[1].frame_index == 1
-    assert results[2].frame_index == 2
+    assert results[0].frame_idx == 0
+    assert results[1].frame_idx == 1
+    assert results[2].frame_idx == 2
     assert results[0].wind == 3   # FURY_ROAD_SANDSTORM
     assert results[1].water == 2  # DUNKIRK_BEACH
 

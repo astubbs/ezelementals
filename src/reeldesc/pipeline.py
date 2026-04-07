@@ -11,9 +11,10 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from reeldesc.runner import ClassificationResult, ClassifyConfig, classify_batch
 from reeldesc.exporters.threefx import FxEntry, compress_results, compression_stats, write_3fx
 from reeldesc.extractor import extract_frames, extract_spectrograms
+from reeldesc.runner import ClassifyConfig, classify_batch
+from reeldesc.timeline import Timeline, TimelineFrame
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +32,7 @@ class PipelineConfig:
 @dataclass
 class PipelineResult:
     fx_entries: list[FxEntry]
-    classification_results: list[ClassificationResult]
+    timeline: Timeline
     stats: dict
     output_path: Path
 
@@ -67,16 +68,17 @@ def run_pipeline(config: PipelineConfig) -> PipelineResult:
 
         logger.info("Classifying %d samples", len(samples))
         t0 = time.monotonic()
-        results: list[ClassificationResult] = classify_batch(
+        frames: list[TimelineFrame] = classify_batch(
             samples,
             config.classify_config,
             on_progress=lambda i, n: logger.info("  %d/%d", i, n),
         )
         t_classify = time.monotonic() - t0
+        timeline = Timeline(frames)
 
         t0 = time.monotonic()
-        entries = compress_results(results, include_flagged=config.include_flagged_in_output)
-        stats = compression_stats(results, entries)
+        entries = compress_results(frames, include_flagged=config.include_flagged_in_output)
+        stats = compression_stats(frames, entries)
         t_compress = time.monotonic() - t0
         logger.info(
             "Compressed %d frames → %d entries (ratio %.1fx, %d flagged)",
@@ -99,7 +101,7 @@ def run_pipeline(config: PipelineConfig) -> PipelineResult:
 
         return PipelineResult(
             fx_entries=entries,
-            classification_results=results,
+            timeline=timeline,
             stats=stats,
             output_path=config.output_path,
         )

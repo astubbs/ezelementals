@@ -1,9 +1,9 @@
-"""Compress classification results into .3fx entries via run-length encoding.
+"""Export .3fx elemental effects tracks from timeline data.
 
-Note: wind_direction and water_type from ClassificationResult are intentionally
-dropped here — the .3fx spec only carries intensity values. The full
-ClassificationResult data (including direction) is retained in
-PipelineResult.classification_results for future use in M2 directional control.
+Compresses timeline frames into sparse FxEntry list via run-length encoding.
+wind_direction and water_type are intentionally dropped — .3fx carries
+intensity only.  The full TimelineFrame data is retained in the timeline.jsonl
+for future use in M2 directional control.
 """
 
 from __future__ import annotations
@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from reeldesc.runner import ClassificationResult
+    from reeldesc.timeline import TimelineFrame
 
 
 @dataclass
@@ -36,18 +36,18 @@ class FxEntry:
 
 
 def compress_results(
-    results: list[ClassificationResult],
+    results: list[TimelineFrame],
     include_flagged: bool = True,
 ) -> list[FxEntry]:
-    """Run-length encode classification results into FxEntry list.
+    """Run-length encode timeline frames into FxEntry list.
 
-    Consecutive results with identical (wind, water, heat_ambient, heat_radiant)
+    Consecutive frames with identical (wind, water, heat_ambient, heat_radiant)
     tuples are collapsed to a single entry at the first timestamp of that run.
-    Results must be sorted by timestamp_s.
+    Results must be sorted by timestamp (t).
     """
     assert all(
-        results[i].timestamp_s <= results[i + 1].timestamp_s for i in range(len(results) - 1)
-    ), "results must be sorted by timestamp_s before calling compress_results"
+        results[i].t <= results[i + 1].t for i in range(len(results) - 1)
+    ), "results must be sorted by t before calling compress_results"
     filtered = [r for r in results if include_flagged or not r.flagged_for_review]
     if not filtered:
         return []
@@ -61,7 +61,7 @@ def compress_results(
         if key != current_key:
             entries.append(
                 FxEntry(
-                    t=current.timestamp_s,
+                    t=current.t,
                     wind=current.wind,
                     water=current.water,
                     heat_ambient=current.heat_ambient,
@@ -74,7 +74,7 @@ def compress_results(
     # Emit the final run
     entries.append(
         FxEntry(
-            t=current.timestamp_s,
+            t=current.t,
             wind=current.wind,
             water=current.water,
             heat_ambient=current.heat_ambient,
@@ -115,7 +115,7 @@ def read_3fx(input_path: Path) -> list[FxEntry]:
 
 
 def compression_stats(
-    raw: list[ClassificationResult],
+    raw: list[TimelineFrame],
     compressed: list[FxEntry],
 ) -> dict:
     """Return compression stats dict."""

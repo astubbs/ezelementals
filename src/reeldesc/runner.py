@@ -1,4 +1,9 @@
-"""Ollama inference pipeline for frame classification."""
+"""Ollama VLM inference engine.
+
+Produces TimelineFrame objects from frame+spectrogram pairs via a single
+monolithic VLM call that returns both natural language descriptions and
+structured elemental fields.
+"""
 
 from __future__ import annotations
 
@@ -13,13 +18,19 @@ from typing import Callable
 
 import httpx
 
+from reeldesc.timeline import TimelineFrame
+
 logger = logging.getLogger(__name__)
 
 DEFAULT_PROMPT = """\
-You are analyzing a movie scene to determine environmental effects for a 4D home theatre.
+You are analyzing a movie scene to produce a dense semantic description for a media database.
 
 Analyze the provided video frame and audio spectrogram. Return ONLY valid JSON with these exact fields:
 {
+  "description": "<1-2 sentence visual scene description>",
+  "audio": "<brief audio description based on the spectrogram>",
+  "scene_type": "<e.g. exterior_desert, interior_vehicle, underwater, urban_street>",
+  "motion": "<none|low|medium|high>",
   "wind": <0-3>,
   "wind_direction": "<frontal|side|rear|none>",
   "water": <0-3>,
@@ -30,23 +41,15 @@ Analyze the provided video frame and audio spectrogram. Return ONLY valid JSON w
 }
 
 Intensity scale: 0=none, 1=subtle, 2=moderate, 3=intense.
+description: what is visually happening in this frame.
+audio: what the spectrogram suggests about the sound.
 confidence: your certainty about this classification.
 """
 
 
-@dataclass
-class ClassificationResult:
-    frame_index: int
-    timestamp_s: float
-    wind: int
-    wind_direction: str
-    water: int
-    water_type: str
-    heat_ambient: int
-    heat_radiant: int
-    confidence: float
-    flagged_for_review: bool
-    raw_response: str
+# Backwards-compatible alias — existing code that imports ClassificationResult
+# continues to work, but new code should use TimelineFrame directly.
+ClassificationResult = TimelineFrame
 
 
 @dataclass
@@ -61,18 +64,27 @@ class ClassifyConfig:
 
 _WIND_DIRECTIONS = ["frontal", "side", "rear", "none"]
 _WATER_TYPES = ["rain", "spray", "none"]
+_SCENE_TYPES = [
+    "exterior_desert", "exterior_ocean", "exterior_forest", "exterior_urban",
+    "interior_vehicle", "interior_building", "underground", "aerial",
+]
+_MOTIONS = ["none", "low", "medium", "high"]
 
 
 def _clamp(value: int, lo: int = 0, hi: int = 3) -> int:
     return max(lo, min(hi, int(value)))
 
 
-def _classify_stub(frame_index: int, timestamp_s: float) -> ClassificationResult:
-    """Return random effect values — for local testing without Ollama."""
+def _classify_stub(frame_index: int, timestamp_s: float) -> TimelineFrame:
+    """Return random values — for local testing without Ollama."""
     rng = random.Random(frame_index)  # seeded per-frame for reproducibility
-    return ClassificationResult(
-        frame_index=frame_index,
-        timestamp_s=timestamp_s,
+    return TimelineFrame(
+        t=timestamp_s,
+        frame_idx=frame_index,
+        description=f"Stub description for frame {frame_index}",
+        audio=f"Stub audio for frame {frame_index}",
+        scene_type=rng.choice(_SCENE_TYPES),
+        motion=rng.choice(_MOTIONS),
         wind=rng.randint(0, 3),
         wind_direction=rng.choice(_WIND_DIRECTIONS),
         water=rng.randint(0, 3),
@@ -90,14 +102,18 @@ def _parse_llm_response(
     frame_index: int,
     timestamp_s: float,
     confidence_threshold: float = 0.7,
-) -> ClassificationResult:
-    """Parse LLM JSON string into ClassificationResult. Never raises."""
+) -> TimelineFrame:
+    """Parse LLM JSON string into TimelineFrame. Never raises."""
     try:
         data = json.loads(raw)
         confidence = float(data.get("confidence", 0.0))
-        result = ClassificationResult(
-            frame_index=frame_index,
-            timestamp_s=timestamp_s,
+        result = TimelineFrame(
+            t=timestamp_s,
+            frame_idx=frame_index,
+            description=str(data.get("description", "")),
+            audio=str(data.get("audio", "")),
+            scene_type=str(data.get("scene_type", "")),
+            motion=str(data.get("motion", "")),
             wind=_clamp(data.get("wind", 0)),
             wind_direction=str(data.get("wind_direction", "none")),
             water=_clamp(data.get("water", 0)),
@@ -110,15 +126,9 @@ def _parse_llm_response(
         )
     except (json.JSONDecodeError, ValueError, TypeError) as e:
         logger.warning("Failed to parse LLM response for frame %d: %s", frame_index, e)
-        result = ClassificationResult(
-            frame_index=frame_index,
-            timestamp_s=timestamp_s,
-            wind=0,
-            wind_direction="none",
-            water=0,
-            water_type="none",
-            heat_ambient=0,
-            heat_radiant=0,
+        result = TimelineFrame(
+            t=timestamp_s,
+            frame_idx=frame_index,
             confidence=0.0,
             flagged_for_review=True,
             raw_response=raw,
@@ -134,7 +144,7 @@ def classify_frame(
     sample: "FrameSample",  # noqa: F821 — avoid circular import
     config: ClassifyConfig,
     client: httpx.Client | None = None,
-) -> ClassificationResult:
+) -> TimelineFrame:
     """Classify a single frame. Uses stub mode if config.stub is True. Never raises."""
     if config.stub:
         return _classify_stub(sample.frame_index, sample.timestamp_s)
@@ -167,15 +177,9 @@ def classify_frame(
 
     except Exception as e:
         logger.warning("classify_frame failed for frame %d: %s", sample.frame_index, e)
-        return ClassificationResult(
-            frame_index=sample.frame_index,
-            timestamp_s=sample.timestamp_s,
-            wind=0,
-            wind_direction="none",
-            water=0,
-            water_type="none",
-            heat_ambient=0,
-            heat_radiant=0,
+        return TimelineFrame(
+            t=sample.timestamp_s,
+            frame_idx=sample.frame_index,
             confidence=0.0,
             flagged_for_review=True,
             raw_response="",
@@ -190,7 +194,7 @@ def classify_batch(
     config: ClassifyConfig,
     client: httpx.Client | None = None,
     on_progress: Callable[[int, int], None] | None = None,
-) -> list[ClassificationResult]:
+) -> list[TimelineFrame]:
     """Classify all samples sequentially. Continues on per-sample failure."""
     own_client = client is None
     if own_client:
@@ -210,7 +214,7 @@ def classify_batch(
             logger.info(
                 "  [%d/%d] t=%.1fs  wind=%d water=%d heat_a=%d heat_r=%d"
                 "  conf=%.2f%s  (%.2f fps, ETA %ds)",
-                i + 1, len(samples), sample.timestamp_s,
+                i + 1, len(samples), result.t,
                 result.wind, result.water, result.heat_ambient, result.heat_radiant,
                 result.confidence, flag, rate, int(eta),
             )

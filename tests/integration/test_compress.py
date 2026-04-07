@@ -2,7 +2,7 @@
 
 import json
 
-from reeldesc.runner import ClassificationResult
+from reeldesc.timeline import TimelineFrame
 from reeldesc.exporters.threefx import (
     FxEntry,
     compress_results,
@@ -13,18 +13,15 @@ from reeldesc.exporters.threefx import (
 
 
 def make_result(frame_index, timestamp_s, wind=0, water=0, heat_ambient=0, heat_radiant=0, flagged=False):
-    return ClassificationResult(
-        frame_index=frame_index,
-        timestamp_s=timestamp_s,
+    return TimelineFrame(
+        t=timestamp_s,
+        frame_idx=frame_index,
         wind=wind,
-        wind_direction="none",
         water=water,
-        water_type="none",
         heat_ambient=heat_ambient,
         heat_radiant=heat_radiant,
         confidence=0.9 if not flagged else 0.3,
         flagged_for_review=flagged,
-        raw_response="{}",
     )
 
 
