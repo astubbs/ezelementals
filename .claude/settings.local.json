@@ -1,0 +1,40 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(uv sync:*)",
+      "Bash(uv run:*)",
+      "Bash(chmod +x /Users/astubbs/github/ezElementals/bin/test /Users/astubbs/github/ezElementals/bin/pipeline)",
+      "Bash(bin/test -q)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(ffmpeg -i /Users/astubbs/Downloads/19280141-uhd_2160_4096_30fps.mp4 -vf \"select=''''gt\\(scene,0.4\\)'''',showinfo\" -vsync vfr -y /tmp/ez_test_frames/%04d.jpg)",
+      "Bash(mkdir -p /tmp/ez_test_frames)",
+      "Bash(ffmpeg -i /Users/astubbs/Downloads/19280141-uhd_2160_4096_30fps.mp4 -vf \"select=''''gt\\(scene,0.1\\)'''',showinfo,format=yuvj420p\" -vsync vfr -y /tmp/ez_test_frames/%04d.jpg)",
+      "Bash(ffmpeg -i /Users/astubbs/Downloads/19280141-uhd_2160_4096_30fps.mp4 -vf \"select=''''gt\\(scene,0.01\\)'''',showinfo,format=yuvj420p\" -vsync vfr -y /tmp/ez_test_frames/%04d.jpg)",
+      "Bash(git push:*)",
+      "Bash(gh api:*)",
+      "Bash(echo \"exit: $?\")",
+      "Bash(chmod +x /Users/astubbs/github/ezElementals/bin/start-ollama.sh)",
+      "Bash(git fetch:*)",
+      "Bash(git checkout:*)",
+      "Bash(git pull:*)",
+      "Bash(git stash:*)",
+      "Bash(./bin/generate-track.sh --frames-dir ./ignored-notes/frames ./ignored-notes/samples/19280141-uhd_2160_4096_30fps.mp4)",
+      "Bash(ollama list:*)",
+      "Bash(ollama search:*)",
+      "Bash(curl -s https://ollama.com/api/search?q=qwen2.5-vl)",
+      "Bash(ollama pull:*)",
+      "Bash(brew upgrade:*)",
+      "Bash(pkill ollama:*)",
+      "Bash(git mv:*)",
+      "Bash(find src/reeldesc -name '*.py' -exec sed -i '' -e 's/from ezelementals\\\\.classify/from reeldesc.runner/g' -e 's/from ezelementals\\\\.compress/from reeldesc.exporters.threefx/g' -e 's/from ezelementals\\\\.extract/from reeldesc.extractor/g' -e 's/from ezelementals\\\\.pipeline/from reeldesc.pipeline/g' -e 's/from ezelementals\\\\.ha_client/from reeldesc.studio.adapters.haos/g' -e 's/from ezelementals\\\\.ui\\\\.config/from reeldesc.studio.config/g' -e 's/from ezelementals\\\\.ui\\\\.routes/from reeldesc.studio.routes/g' -e 's/from ezelementals\\\\.ui\\\\.ws/from reeldesc.studio.ws/g' -e 's/from ezelementals\\\\.ui\\\\.jobs/from reeldesc.studio.jobs/g' {} +)",
+      "Bash(sed -i '' -e 's/ezelementals-ui/reeldesc-ui/g' -e 's/ezelementals\\\\.ui\\\\.server/reeldesc.studio.server/g' -e 's/src\\\\/ezelementals\\\\/ui\\\\/static/src\\\\/reeldesc\\\\/studio\\\\/static/g' -e 's/the ezelementals pipeline/the reeldesc pipeline/g' -e 's/ezelementals pipeline/reeldesc pipeline/g' -e 's/getLogger\\(\"\"ezelementals\"\"\\)/getLogger\\(\"\"reeldesc\"\"\\)/g' -e 's/`ezelementals-ui`/`reeldesc-ui`/g' src/reeldesc/studio/server.py)",
+      "Bash(sed -i '' -e 's/ezelementals-ui/reeldesc-ui/g' -e 's|\\\\.config/ezelementals|.config/reeldesc|g' -e 's/\"\"ezelementals\"\"/\"\"reeldesc\"\"/g' src/reeldesc/studio/config.py)",
+      "Bash(sed -i '' -e 's/ezelementals_/reeldesc_/g' src/reeldesc/studio/jobs/encode_job.py)",
+      "Bash(find tests:*)",
+      "Bash(grep -rn ezelementals *.md)",
+      "Bash(grep -rn ezelementals ui/ --include=*.ts --include=*.tsx --include=*.json)",
+      "Bash(export PATH=\"$HOME/.local/bin:$HOME/.cargo/bin:/opt/homebrew/bin:$PATH\")"
+    ]
+  }
+}
