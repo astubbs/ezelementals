@@ -33,7 +33,7 @@ export interface EncoderState {
   events: WsEvent[]
   latestFrame: { frame: string | null; spectrogram: string | null; worker: number; frameIndex: number; timestampS: number } | null
   progress: { completed: number; total: number; etaS: number | null } | null
-  workers: Record<number, { frameIndex: number; timestampS: number; lastResult?: WsEvent; inferenceMs?: number }>
+  workers: Record<number, { frameIndex: number; timestampS: number; lastResult?: WsEvent; inferenceMs?: number; lastDescription?: string; lastAudio?: string }>
   done: boolean
   error: string | null
   currentPhase: EncodePhase
@@ -100,7 +100,12 @@ export function useEncoderWs(jobId: string | null) {
           const w = event.worker as number
           next.workers = {
             ...s.workers,
-            [w]: { ...(s.workers[w] ?? {}), lastResult: event },
+            [w]: {
+              ...(s.workers[w] ?? {}),
+              lastResult: event,
+              lastDescription: event.description as string | undefined,
+              lastAudio: event.audio as string | undefined,
+            },
           }
         }
         if (event.type === 'progress') {

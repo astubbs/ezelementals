@@ -5,6 +5,8 @@ interface WorkerState {
   frameIndex: number
   timestampS: number
   lastResult?: WsEvent
+  lastDescription?: string
+  lastAudio?: string
 }
 
 interface Props {
@@ -44,6 +46,11 @@ export function WorkerCard({ workerId, url, model, state }: Props) {
           {confidence !== undefined && (
             <div className={`text-xs mt-1.5 ${flagged ? 'text-yellow-400' : 'text-slate-500'}`}>
               {flagged ? '⚠ ' : '✓ '}conf {(confidence * 100).toFixed(0)}%
+            </div>
+          )}
+          {state.lastDescription && (
+            <div className="text-xs text-slate-400 mt-1.5 leading-tight line-clamp-2 italic">
+              {state.lastDescription}
             </div>
           )}
         </>

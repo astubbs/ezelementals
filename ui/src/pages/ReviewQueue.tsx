@@ -1,29 +1,40 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { editor as editorApi } from '../lib/api'
-import type { FxEntry } from '../lib/api'
+import type { FxEntry, TimelineFrameRecord } from '../lib/api'
 import { CHANNEL_COLOR, CHANNEL_LABEL, CHANNELS } from '../lib/colors'
 import { CheckCircle, SkipForward, ChevronLeft, ChevronRight } from 'lucide-react'
 
+type ReviewEntry = (FxEntry | TimelineFrameRecord) & { flagged?: boolean; flagged_for_review?: boolean; confidence?: number }
+
 export default function ReviewQueue() {
   const [searchParams] = useSearchParams()
-  const fxPath = searchParams.get('path') ?? ''
+  const pathParam = searchParams.get('path') ?? ''
+  const isBundlePath = pathParam.endsWith('.bundle') || (!pathParam.endsWith('.3fx') && pathParam !== '')
 
-  const [entries, setEntries] = useState<FxEntry[]>([])
-  const [flagged, setFlagged] = useState<FxEntry[]>([])
+  const [entries, setEntries] = useState<ReviewEntry[]>([])
+  const [flagged, setFlagged] = useState<ReviewEntry[]>([])
   const [idx, setIdx] = useState(0)
   const [edits, setEdits] = useState<Partial<FxEntry>>({})
   const [accepted, setAccepted] = useState(0)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!fxPath) return
-    editorApi.load(fxPath).then(t => {
-      setEntries(t.entries)
-      setFlagged(t.entries.filter(e => e.flagged))
-      setLoading(false)
-    })
-  }, [fxPath])
+    if (!pathParam) return
+    if (isBundlePath) {
+      editorApi.loadTimeline(pathParam).then(r => {
+        setEntries(r.frames)
+        setFlagged(r.frames.filter(f => f.flagged_for_review))
+        setLoading(false)
+      })
+    } else {
+      editorApi.load(pathParam).then(t => {
+        setEntries(t.entries)
+        setFlagged(t.entries.filter(e => e.flagged))
+        setLoading(false)
+      })
+    }
+  }, [pathParam, isBundlePath])
 
   const current = flagged[idx]
   const isLast = idx >= flagged.length - 1
@@ -34,8 +45,12 @@ export default function ReviewQueue() {
 
   async function accept() {
     if (!current) return
-    const updated = { ...current, ...edits, flagged: false }
-    await editorApi.save(fxPath, entries.map(e => Math.abs(e.t - current.t) < 0.001 ? updated : e))
+    const updated = { ...current, ...edits, flagged: false, flagged_for_review: false }
+    if (isBundlePath) {
+      await editorApi.patchFrame(pathParam, current.t, { ...edits, confidence: 1.0 })
+    } else {
+      await editorApi.save(pathParam, entries.map(e => Math.abs(e.t - current.t) < 0.001 ? updated : e) as FxEntry[])
+    }
     setEntries(prev => prev.map(e => Math.abs(e.t - current.t) < 0.001 ? updated : e))
     setAccepted(a => a + 1)
     nextEntry()
@@ -48,7 +63,7 @@ export default function ReviewQueue() {
     setIdx(i => Math.min(i + 1, flagged.length - 1))
   }
 
-  if (!fxPath) return <div className="p-6 text-slate-400">No file selected.</div>
+  if (!pathParam) return <div className="p-6 text-slate-400">No file selected.</div>
   if (loading) return <div className="flex items-center justify-center h-full"><div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" /></div>
   if (!flagged.length) return (
     <div className="flex flex-col items-center justify-center h-full gap-3">
@@ -84,7 +99,22 @@ export default function ReviewQueue() {
         <div className="flex items-center gap-4 text-sm">
           <span className="font-mono text-slate-300">t = {current.t.toFixed(2)}s</span>
           <span className="text-yellow-400 text-xs">⚠ low confidence</span>
+          {current.confidence !== undefined && (
+            <span className="text-xs text-slate-500">{Math.round(current.confidence * 100)}% confidence</span>
+          )}
         </div>
+        {/* VLM description — helps judge if the flag is reasonable */}
+        {'description' in current && current.description && (
+          <div className="mt-2 text-sm text-slate-300 italic">"{current.description}"</div>
+        )}
+        {'audio' in current && current.audio && (
+          <div className="mt-1 text-xs text-slate-500">Audio: {current.audio}</div>
+        )}
+        {'scene_type' in current && current.scene_type && (
+          <div className="mt-1 text-xs text-slate-600">Scene: {current.scene_type}
+            {'motion' in current && current.motion ? ` · motion: ${current.motion}` : ''}
+          </div>
+        )}
       </div>
 
       {/* Frame images placeholder — in a real impl, stored alongside .3fx */}

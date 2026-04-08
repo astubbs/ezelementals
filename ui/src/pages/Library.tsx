@@ -113,25 +113,33 @@ function DirRow({ entry, expanded, setExpanded, navigate }: {
 }
 
 function FileRow({ entry, navigate }: { entry: LibraryFileEntry; navigate: ReturnType<typeof useNavigate> }) {
-  const { status, flagged_count, path, fx_path, name } = entry
+  const { status, flagged_count, path, bundle_path, fx_path, name, title, year } = entry
+  const isEncoded = status === 'encoded' || status === 'flagged' || status === 'bundled' || status === 'bundled_flagged'
+  const isFlagged = status === 'flagged' || status === 'bundled_flagged'
+  const editorTarget = bundle_path ?? fx_path ?? ''
+  const playerTarget = bundle_path ?? fx_path ?? ''
+  const displayName = title ? `${title}${year ? ` (${year})` : ''}` : name
 
   return (
     <div className="flex items-center gap-3 px-4 py-2.5 hover:bg-slate-900">
       <Film size={16} className="text-slate-500 shrink-0" />
-      <span className="text-sm text-slate-200 flex-1 truncate" title={path}>{name}</span>
+      <div className="flex-1 min-w-0">
+        <span className="text-sm text-slate-200 truncate block" title={path}>{displayName}</span>
+        {title && <span className="text-xs text-slate-600 truncate block">{name}</span>}
+      </div>
       <StatusBadge status={status} flaggedCount={flagged_count} />
       <div className="flex items-center gap-1 shrink-0">
-        {(status === 'encoded' || status === 'flagged') && (
+        {isEncoded && (
           <>
             <ActionBtn icon={<Play size={13} />} label="Play"
-              onClick={() => navigate(`/player?fx=${encodeURIComponent(fx_path)}`)} />
+              onClick={() => navigate(`/player?${bundle_path ? `bundle=${encodeURIComponent(bundle_path)}` : `fx=${encodeURIComponent(fx_path ?? '')}`}`)} />
             <ActionBtn icon={<Edit size={13} />} label="Edit"
-              onClick={() => navigate(`/editor?path=${encodeURIComponent(fx_path)}`)} />
+              onClick={() => navigate(`/editor?path=${encodeURIComponent(editorTarget)}`)} />
           </>
         )}
-        {status === 'flagged' && (
+        {isFlagged && (
           <ActionBtn icon={<AlertCircle size={13} />} label="Review" accent
-            onClick={() => navigate(`/review?path=${encodeURIComponent(fx_path)}`)} />
+            onClick={() => navigate(`/review?path=${encodeURIComponent(playerTarget)}`)} />
         )}
         <ActionBtn
           icon={<RefreshCw size={13} />}
@@ -143,6 +151,10 @@ function FileRow({ entry, navigate }: { entry: LibraryFileEntry; navigate: Retur
 }
 
 function StatusBadge({ status, flaggedCount }: { status: string; flaggedCount: number }) {
+  if (status === 'bundled')
+    return <span className="flex items-center gap-1 text-xs text-blue-400 shrink-0"><CheckCircle size={12} /> Bundle</span>
+  if (status === 'bundled_flagged')
+    return <span className="flex items-center gap-1 text-xs text-yellow-400 shrink-0"><AlertCircle size={12} /> {flaggedCount} flagged</span>
   if (status === 'encoded')
     return <span className="flex items-center gap-1 text-xs text-green-400 shrink-0"><CheckCircle size={12} /> Encoded</span>
   if (status === 'flagged')

@@ -18,6 +18,10 @@ export default function Encoder() {
   const [deviceList, setDeviceList] = useState<DeviceConfig[]>([])
   const [appSettings, setAppSettings] = useState<Settings | null>(null)
   const [started, setStarted] = useState(false)
+  const [filmTitle, setFilmTitle] = useState('')
+  const [filmYear, setFilmYear] = useState('')
+  const [filmImdb, setFilmImdb] = useState('')
+  const [showFilmInfo, setShowFilmInfo] = useState(false)
 
   const { state, cancel } = useEncoderWs(jobId)
 
@@ -37,6 +41,9 @@ export default function Encoder() {
       confidence_threshold: defaults?.confidence_threshold ?? 0.7,
       stub_llm: defaults?.stub_llm ?? false,
       workers: workers?.length ? workers : undefined,
+      title: filmTitle || undefined,
+      year: filmYear ? Number(filmYear) : undefined,
+      imdb_id: filmImdb || undefined,
     })
     setJobId(result.job_id)
     setStarted(true)
@@ -70,10 +77,16 @@ export default function Encoder() {
       <div className="flex items-center gap-3">
         <h1 className="text-lg font-semibold text-slate-100 flex-1 truncate">{videoPath.split('/').pop()}</h1>
         {!started ? (
-          <button onClick={startEncode}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-sm font-medium">
-            <Play size={14} /> Start Encode
-          </button>
+          <>
+            <button onClick={() => setShowFilmInfo(v => !v)}
+              className="px-3 py-2 border border-slate-700 hover:border-slate-500 rounded-lg text-sm text-slate-400">
+              Film info {showFilmInfo ? '▲' : '▼'}
+            </button>
+            <button onClick={startEncode}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-sm font-medium">
+              <Play size={14} /> Start Encode
+            </button>
+          </>
         ) : !state.done ? (
           <button onClick={cancel}
             className="flex items-center gap-2 px-4 py-2 bg-red-800 hover:bg-red-700 rounded-lg text-sm font-medium text-red-200">
@@ -86,6 +99,30 @@ export default function Encoder() {
           </button>
         )}
       </div>
+
+      {/* Optional film info form */}
+      {!started && showFilmInfo && (
+        <div className="bg-slate-900 rounded-lg p-4 border border-slate-700 flex gap-3 flex-wrap">
+          <div className="flex flex-col gap-1 flex-1 min-w-[160px]">
+            <label className="text-xs text-slate-500">Title</label>
+            <input value={filmTitle} onChange={e => setFilmTitle(e.target.value)}
+              placeholder="Mad Max: Fury Road"
+              className="bg-slate-800 border border-slate-700 rounded px-2 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500" />
+          </div>
+          <div className="flex flex-col gap-1 w-20">
+            <label className="text-xs text-slate-500">Year</label>
+            <input value={filmYear} onChange={e => setFilmYear(e.target.value)}
+              placeholder="2015" type="number" min="1900" max="2099"
+              className="bg-slate-800 border border-slate-700 rounded px-2 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500" />
+          </div>
+          <div className="flex flex-col gap-1 w-32">
+            <label className="text-xs text-slate-500">IMDB ID</label>
+            <input value={filmImdb} onChange={e => setFilmImdb(e.target.value)}
+              placeholder="tt1392190"
+              className="bg-slate-800 border border-slate-700 rounded px-2 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500" />
+          </div>
+        </div>
+      )}
 
       {/* Main two-column layout */}
       <div className="flex gap-4 flex-1 min-h-0">

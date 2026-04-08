@@ -35,7 +35,7 @@ export default function Player() {
     if (!fxPath) return
     pollRef.current = setInterval(async () => {
       try {
-        const state = await playerApi.state(fxPath)
+        const state = await playerApi.state({ fxPath })
         setPositionS(state.position_s)
         setCurrentFx(state.current_fx)
         setHaAvailable(state.ha_available)

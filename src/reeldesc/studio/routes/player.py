@@ -65,12 +65,68 @@ async def _ha_position(settings: dict) -> float | None:
         return None
 
 
+def _resolve_playback_data(
+    fx_path: str | None,
+    bundle_path: str | None,
+    timeline_path: str | None,
+    position_s: float,
+) -> dict[str, Any] | None:
+    """Resolve the active effect at position_s from whichever source is provided.
+
+    Preference order: bundle_path > timeline_path > fx_path.
+    For bundles/timelines, returns the full TimelineFrame as a dict (includes
+    description, audio, etc.).  For .3fx only, returns a sparse FxEntry dict.
+    """
+    # ── Bundle / timeline path ───────────────────────────────────────────────
+    tl_file: Path | None = None
+    if bundle_path:
+        candidate = Path(bundle_path) / "timeline.jsonl"
+        if candidate.exists():
+            tl_file = candidate
+    if tl_file is None and timeline_path:
+        candidate = Path(timeline_path)
+        if candidate.exists():
+            tl_file = candidate
+
+    if tl_file is not None:
+        try:
+            from reeldesc.timeline import Timeline
+            timeline = Timeline.read(tl_file)
+            frame = timeline.lookup(position_s)
+            if frame is None:
+                return None
+            d = frame.to_dict()
+            d["flagged_for_review"] = frame.flagged_for_review
+            # next_change_t from subsequent frame
+            frames = timeline.frames
+            idx = next((i for i, f in enumerate(frames) if abs(f.t - frame.t) < 0.001), None)
+            d["next_change_t"] = frames[idx + 1].t if idx is not None and idx + 1 < len(frames) else None
+            return d
+        except Exception:
+            pass
+
+    # ── Legacy .3fx fallback ─────────────────────────────────────────────────
+    if fx_path:
+        p = Path(fx_path)
+        if p.exists():
+            try:
+                entries = _load_fx(p)
+                return _current_fx(entries, position_s)
+            except Exception:
+                pass
+    return None
+
+
 @router.get("/state")
-async def get_player_state(fx_path: str = Query(...)) -> dict:
+async def get_player_state(
+    fx_path: str | None = Query(default=None),
+    bundle_path: str | None = Query(default=None),
+    timeline_path: str | None = Query(default=None),
+) -> dict:
     """
     Returns:
       position_s   — current HA playback position (or null)
-      current_fx   — the active FxEntry at that position (or null)
+      current_fx   — active effect/frame at that position (or null)
       ha_available — whether HA responded
     """
     settings = load_settings()
@@ -78,14 +134,8 @@ async def get_player_state(fx_path: str = Query(...)) -> dict:
     ha_available = position_s is not None
 
     current = None
-    if ha_available:
-        p = Path(fx_path)
-        if p.exists():
-            try:
-                entries = _load_fx(p)
-                current = _current_fx(entries, position_s)
-            except Exception:
-                pass
+    if ha_available and position_s is not None:
+        current = _resolve_playback_data(fx_path, bundle_path, timeline_path, position_s)
 
     return {
         "position_s": position_s,
@@ -95,11 +145,14 @@ async def get_player_state(fx_path: str = Query(...)) -> dict:
 
 
 @router.get("/lookup")
-def fx_at_time(fx_path: str = Query(...), t: float = Query(...)) -> dict:
-    """Return the active FxEntry for an arbitrary timestamp (for scrubbing)."""
-    p = Path(fx_path)
-    if not p.exists():
-        raise HTTPException(status_code=404, detail="Track not found")
-    entries = _load_fx(p)
-    fx = _current_fx(entries, t)
-    return {"t": t, "fx": fx}
+def fx_at_time(
+    t: float = Query(...),
+    fx_path: str | None = Query(default=None),
+    bundle_path: str | None = Query(default=None),
+    timeline_path: str | None = Query(default=None),
+) -> dict:
+    """Return the active effect/frame for an arbitrary timestamp (for scrubbing)."""
+    result = _resolve_playback_data(fx_path, bundle_path, timeline_path, t)
+    if result is None and not any([fx_path, bundle_path, timeline_path]):
+        raise HTTPException(status_code=400, detail="Provide fx_path, bundle_path, or timeline_path")
+    return {"t": t, "fx": result}

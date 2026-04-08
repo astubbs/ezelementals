@@ -47,13 +47,42 @@ export interface FxEntry {
   flagged?: boolean
 }
 
+/** Full semantic record from timeline.jsonl */
+export interface TimelineFrameRecord {
+  t: number
+  frame_idx: number
+  description: string
+  audio: string
+  scene_type: string
+  motion: string
+  wind: number
+  wind_direction: string
+  water: number
+  water_type: string
+  heat_ambient: number
+  heat_radiant: number
+  confidence: number
+  flagged_for_review?: boolean
+}
+
+export interface BundleMeta {
+  title?: string
+  year?: number
+  imdb_id?: string
+}
+
 export interface LibraryFileEntry {
   type: 'file'
   name: string
   path: string
-  fx_path: string
-  status: 'not_encoded' | 'encoded' | 'flagged' | 'in_progress'
+  bundle_path: string | null
+  fx_path: string | null
+  timeline_path: string | null
+  status: 'not_encoded' | 'encoded' | 'flagged' | 'bundled' | 'bundled_flagged' | 'in_progress'
   flagged_count: number
+  title: string
+  year: number
+  imdb_id: string
 }
 
 export interface LibraryDirEntry {
@@ -110,6 +139,10 @@ export interface StartEncodeRequest {
   confidence_threshold?: number
   stub_llm?: boolean
   workers?: { url: string; model: string }[]
+  // BundleMeta — optional film info
+  title?: string
+  year?: number
+  imdb_id?: string
 }
 
 export const encoder = {
@@ -122,17 +155,39 @@ export const encoder = {
 // ── Editor ───────────────────────────────────────────────────────────────────
 
 export const editor = {
+  // .3fx routes (legacy)
   load: (path: string) => get<{ path: string; entries: FxEntry[] }>('/editor', { path }),
   save: (path: string, entries: FxEntry[]) => put<{ path: string; count: number }>(`/editor?path=${encodeURIComponent(path)}`, entries),
   addEntry: (path: string, entry: FxEntry) => post<{ added: FxEntry }>(`/editor/entry?path=${encodeURIComponent(path)}`, entry),
   deleteEntry: (path: string, t: number) => del<{ deleted_at: number }>(`/editor/entry?path=${encodeURIComponent(path)}&t=${t}`),
+  // timeline.jsonl routes (bundle)
+  loadTimeline: (bundlePath: string) => get<{ path: string; frames: TimelineFrameRecord[] }>('/editor/timeline', { path: bundlePath }),
+  saveTimeline: (bundlePath: string, frames: TimelineFrameRecord[]) => put<{ path: string; count: number }>(`/editor/timeline?path=${encodeURIComponent(bundlePath)}`, frames),
+  patchFrame: (bundlePath: string, t: number, update: Partial<TimelineFrameRecord>) =>
+    fetch(`/api/editor/timeline?path=${encodeURIComponent(bundlePath)}&t=${t}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(update),
+    }).then(r => { if (!r.ok) throw new Error(`PATCH timeline → ${r.status}`); return r.json() }),
 }
 
 // ── Player ───────────────────────────────────────────────────────────────────
 
 export const player = {
-  state: (fxPath: string) => get<{ position_s: number | null; ha_available: boolean; current_fx: (FxEntry & { next_change_t: number | null }) | null }>('/player/state', { fx_path: fxPath }),
-  lookup: (fxPath: string, t: number) => get<{ t: number; fx: FxEntry | null }>('/player/lookup', { fx_path: fxPath, t: String(t) }),
+  state: (opts: { fxPath?: string; bundlePath?: string; timelinePath?: string }) => {
+    const params: Record<string, string> = {}
+    if (opts.fxPath) params.fx_path = opts.fxPath
+    if (opts.bundlePath) params.bundle_path = opts.bundlePath
+    if (opts.timelinePath) params.timeline_path = opts.timelinePath
+    return get<{ position_s: number | null; ha_available: boolean; current_fx: (FxEntry & { next_change_t: number | null }) | null }>('/player/state', params)
+  },
+  lookup: (t: number, opts: { fxPath?: string; bundlePath?: string; timelinePath?: string }) => {
+    const params: Record<string, string> = { t: String(t) }
+    if (opts.fxPath) params.fx_path = opts.fxPath
+    if (opts.bundlePath) params.bundle_path = opts.bundlePath
+    if (opts.timelinePath) params.timeline_path = opts.timelinePath
+    return get<{ t: number; fx: FxEntry | null }>('/player/lookup', params)
+  },
 }
 
 // ── Devices ──────────────────────────────────────────────────────────────────

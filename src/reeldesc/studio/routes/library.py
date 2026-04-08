@@ -18,8 +18,10 @@ router = APIRouter(prefix="/api/library", tags=["library"])
 
 # Status values (also used by the encoder job to override)
 STATUS_NOT_ENCODED = "not_encoded"
-STATUS_ENCODED = "encoded"
-STATUS_FLAGGED = "flagged"  # .3fx exists but has flagged_for_review entries
+STATUS_ENCODED = "encoded"       # legacy: .3fx only, no bundle
+STATUS_FLAGGED = "flagged"       # .3fx exists but has flagged entries
+STATUS_BUNDLED = "bundled"       # full .bundle/ directory present
+STATUS_BUNDLED_FLAGGED = "bundled_flagged"  # bundle with flagged frames
 # STATUS_IN_PROGRESS is injected at runtime by the encoder job manager
 
 
@@ -27,12 +29,40 @@ def _fx_path(video: Path) -> Path:
     return video.with_suffix(".3fx")
 
 
-def _count_flagged(fx: Path) -> int:
-    """Count lines in a .3fx file that carry a 'flagged' field (M1+ format)."""
+def _bundle_path(video: Path) -> Path:
+    return video.with_suffix(".bundle")
+
+
+def _count_flagged_timeline(bundle: Path) -> int:
+    """Count flagged frames in a bundle's timeline.jsonl."""
+    timeline_path = bundle / "timeline.jsonl"
+    if not timeline_path.exists():
+        return 0
     count = 0
     try:
         import json
+        with timeline_path.open() as f:
+            for line in f:
+                line = line.strip()
+                if line:
+                    try:
+                        obj = json.loads(line)
+                        # flagged_for_review is derived from confidence at read time;
+                        # confidence < 0.7 means flagged
+                        if float(obj.get("confidence", 1.0)) < 0.7:
+                            count += 1
+                    except (json.JSONDecodeError, ValueError):
+                        pass
+    except OSError:
+        pass
+    return count
 
+
+def _count_flagged_fx(fx: Path) -> int:
+    """Count lines in a .3fx file that carry a 'flagged' field (legacy)."""
+    count = 0
+    try:
+        import json
         with fx.open() as f:
             for line in f:
                 line = line.strip()
@@ -48,26 +78,71 @@ def _count_flagged(fx: Path) -> int:
     return count
 
 
+def _bundle_meta(bundle: Path) -> dict[str, Any]:
+    """Read title/year from bundle's meta.json, returns {} on failure."""
+    meta_path = bundle / "meta.json"
+    if not meta_path.exists():
+        return {}
+    try:
+        import json
+        with meta_path.open() as f:
+            return json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+
 def _video_entry(video: Path) -> dict[str, Any]:
+    bundle = _bundle_path(video)
+    if bundle.exists() and bundle.is_dir():
+        flagged = _count_flagged_timeline(bundle)
+        meta = _bundle_meta(bundle)
+        status = STATUS_BUNDLED_FLAGGED if flagged > 0 else STATUS_BUNDLED
+        fx_in_bundle = bundle / "elemental.3fx"
+        return {
+            "type": "file",
+            "name": video.name,
+            "path": str(video),
+            "bundle_path": str(bundle),
+            "fx_path": str(fx_in_bundle) if fx_in_bundle.exists() else None,
+            "timeline_path": str(bundle / "timeline.jsonl"),
+            "status": status,
+            "flagged_count": flagged,
+            "title": meta.get("title", ""),
+            "year": meta.get("year", 0),
+            "imdb_id": meta.get("imdb_id", ""),
+        }
+
+    # Legacy: .3fx without bundle
     fx = _fx_path(video)
     if fx.exists():
-        flagged = _count_flagged(fx)
+        flagged = _count_flagged_fx(fx)
         status = STATUS_FLAGGED if flagged > 0 else STATUS_ENCODED
         return {
             "type": "file",
             "name": video.name,
             "path": str(video),
+            "bundle_path": None,
             "fx_path": str(fx),
+            "timeline_path": None,
             "status": status,
             "flagged_count": flagged,
+            "title": "",
+            "year": 0,
+            "imdb_id": "",
         }
+
     return {
         "type": "file",
         "name": video.name,
         "path": str(video),
+        "bundle_path": None,
         "fx_path": str(fx),
+        "timeline_path": None,
         "status": STATUS_NOT_ENCODED,
         "flagged_count": 0,
+        "title": "",
+        "year": 0,
+        "imdb_id": "",
     }
 
 

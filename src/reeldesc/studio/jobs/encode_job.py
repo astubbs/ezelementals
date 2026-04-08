@@ -216,6 +216,10 @@ class EncodeJob:
                     "heat_radiant": result.heat_radiant,
                     "confidence": result.confidence,
                     "flagged": result.flagged_for_review,
+                    "description": result.description,
+                    "audio": result.audio,
+                    "scene_type": result.scene_type,
+                    "motion": result.motion,
                 }
             )
             return result
@@ -253,24 +257,44 @@ class EncodeJob:
             shutil.rmtree(tmp_dir, ignore_errors=True)
             return
 
-        # ── Compress + write ─────────────────────────────────────────────────
+        # ── Compress + write .3fx ────────────────────────────────────────────
         from reeldesc.exporters.threefx import compress_results
+        from reeldesc.timeline import Timeline
+        from reeldesc.bundle import BundleMeta, create_bundle
+        import datetime
 
         log.info("[%s] Classification complete. Compressing %d results…", self.job_id, len(results))
-        self._emit({"type": "status", "message": "Compressing and writing .3fx…", "phase": "compressing"})
-        entries = compress_results(results)
-        write_3fx(entries, output_path)
+        self._emit({"type": "status", "message": "Compressing and writing bundle…", "phase": "compressing"})
+
+        fx_entries = compress_results(results)
+        write_3fx(fx_entries, output_path)
+
+        # ── Build Timeline + create bundle ───────────────────────────────────
+        timeline = Timeline(list(results))
+        bundle_dir = video_path.with_suffix(".bundle")
+        meta = BundleMeta(
+            title=params.get("title", ""),
+            year=int(params["year"]) if params.get("year") else 0,
+            imdb_id=params.get("imdb_id", ""),
+            fps=fps,
+            model=worker_cfgs[0].model if worker_cfgs else "",
+            created_at=datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        )
+        create_bundle(bundle_dir, meta, timeline, exports={"elemental.3fx": output_path})
+        log.info("[%s] Bundle written to %s", self.job_id, bundle_dir)
 
         flagged = sum(1 for r in results if r.flagged_for_review)
         self.flagged_count = flagged
-        self.output_path = str(output_path)
+        self.output_path = str(bundle_dir)
         self.status = S_DONE
-        log.info("[%s] Done. Written %s  flagged=%d", self.job_id, output_path, flagged)
+        log.info("[%s] Done. Written %s  flagged=%d", self.job_id, bundle_dir, flagged)
         self._emit(
             {
                 "type": "done",
                 "flagged_count": flagged,
-                "output_path": str(output_path),
+                "output_path": str(bundle_dir),
+                "timeline_path": str(bundle_dir / "timeline.jsonl"),
+                "fx_path": str(bundle_dir / "elemental.3fx"),
             }
         )
 

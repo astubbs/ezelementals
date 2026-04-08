@@ -34,7 +34,19 @@
       "Bash(find tests:*)",
       "Bash(grep -rn ezelementals *.md)",
       "Bash(grep -rn ezelementals ui/ --include=*.ts --include=*.tsx --include=*.json)",
-      "Bash(export PATH=\"$HOME/.local/bin:$HOME/.cargo/bin:/opt/homebrew/bin:$PATH\")"
+      "Bash(export PATH=\"$HOME/.local/bin:$HOME/.cargo/bin:/opt/homebrew/bin:$PATH\")",
+      "Bash(npm run:*)",
+      "Read(//Users/astubbs/**)",
+      "Read(//usr/local/**)",
+      "Bash(export PATH=\"/opt/homebrew/Cellar/node/23.11.0/bin:$PATH\")",
+      "Bash(npx tsc:*)",
+      "Bash(node_modules/.bin/tsc -b)",
+      "Bash(./node_modules/.bin/tsc -b)",
+      "Bash(./node_modules/.bin/vite build:*)",
+      "Bash(node_modules/.bin/tsc -b --noEmit)",
+      "Bash(/Users/astubbs/github/ezElementals/ui/node_modules/.bin/tsc -b --noEmit --project /Users/astubbs/github/ezElementals/.claude/worktrees/ecstatic-wu/ui/tsconfig.json)",
+      "Bash(/Users/astubbs/github/ezElementals/ui/node_modules/.bin/tsc -b)",
+      "Bash(npm install:*)"
     ]
   }
 }
