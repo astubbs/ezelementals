@@ -3,6 +3,8 @@ package com.sharca.alloy.homeassistant
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.jsonObject
@@ -77,13 +79,15 @@ class HomeAssistantConnection(val config: Config) {
         }
 
     private fun parseState(element: JsonElement): HAState? {
-        val obj = element.jsonObject
-        val entityId = obj["entity_id"]?.jsonPrimitive?.contentOrNull ?: return null
-        val state = obj["state"]?.jsonPrimitive?.contentOrNull ?: ""
-        val attributes = obj["attributes"]?.jsonObject
-        val friendly = attributes?.get("friendly_name")?.jsonPrimitive?.contentOrNull
-        val deviceClass = attributes?.get("device_class")?.jsonPrimitive?.contentOrNull
-        val volume = attributes?.get("volume_level")?.jsonPrimitive?.doubleOrNull
+        // Use `as?` rather than `.jsonObject` because the latter
+        // throws on JsonNull (e.g. `"attributes": null`).
+        val obj = element as? JsonObject ?: return null
+        val entityId = (obj["entity_id"] as? JsonPrimitive)?.contentOrNull ?: return null
+        val state = (obj["state"] as? JsonPrimitive)?.contentOrNull ?: ""
+        val attributes = obj["attributes"] as? JsonObject
+        val friendly = (attributes?.get("friendly_name") as? JsonPrimitive)?.contentOrNull
+        val deviceClass = (attributes?.get("device_class") as? JsonPrimitive)?.contentOrNull
+        val volume = (attributes?.get("volume_level") as? JsonPrimitive)?.doubleOrNull
         return HAState(entityId, state, friendly, deviceClass, volume)
     }
 
