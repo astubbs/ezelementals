@@ -116,6 +116,59 @@ background, surface the confirmed state separately when it arrives.
 The volume control is the place this is *most felt*, so it gets the
 canonical implementation; the rest of the app inherits the pattern.
 
+## Onboarding and configuration
+
+Every feature in the app binds to one or more backends (AV receivers,
+ezBEQ profiles, MiniDSP devices, media players, Home Assistant
+entities). Getting those bindings right on first launch is the
+difference between an app that feels magical and one that feels like
+a chore. Onboarding is a first-class part of the product, not an
+afterthought bolted on before ship.
+
+### Principles
+
+- **Discovery first, manual always available.** On any backend
+  binding screen, the app runs discovery in parallel across every
+  channel it knows about (direct LAN, Home Assistant, etc.) and
+  streams results into a unified picker. Manual entry is a
+  first-class option on the same screen, never buried, so a user
+  on a weird network is never stuck.
+- **Two-source pattern, everywhere.** The baseline is direct-LAN
+  discovery *plus* Home Assistant discovery, combined into one
+  picker. This generalises: whenever a new backend type lands, both
+  lanes are expected (direct + HA) unless there's a concrete reason
+  otherwise.
+- **Deduplicate across sources.** If the same device is found via
+  multiple channels, show it once with a combined source tag and
+  default the selection to the lowest-latency channel.
+- **Test before commit.** Every binding screen ends with a "test
+  this target" step that exercises the real protocol against the
+  real device. If it fails, the user gets an inline warning and
+  either a one-tap retry or a re-pick. No user should ever reach
+  the home screen with a binding that doesn't actually work.
+- **Re-runnable from settings.** Onboarding is never a one-shot.
+  Settings exposes a re-run entry for every binding, so users can
+  switch receivers, add Home Assistant connections, or rebuild
+  their configuration without a reinstall.
+
+### Home Assistant as a universal second lane
+
+A Home Assistant connection is the second discovery lane for every
+backend type the app supports. The app stores one HA connection per
+install (host + long-lived access token), discovers the HA host over
+mDNS on first run, and queries `/api/states` to enumerate relevant
+entities for whichever backend the user is currently binding. The HA
+connection is optional — a user with direct LAN access to everything
+never has to touch it.
+
+### First run
+
+The first launch is always an onboarding flow. In M1, that flow
+binds a single volume target (see the M1 diary entry and the
+`specs/onboarding.md` spec). As later milestones ship, the first run
+expands to cover more backend bindings, more wizard screens, all
+following the principles above.
+
 ## Features (UI sections)
 
 The app is organised around a small set of user-intent sections. Each is
