@@ -4,9 +4,13 @@ import Observation
 /// App-wide persistent state: bound volume target, last-known volume,
 /// HA connection URL. Secrets (the HA token) live in the Keychain via
 /// `SecureStore`.
+///
+/// Deliberately *not* `@MainActor` so the App struct can clear the
+/// bound target from `init()` for UI tests. UserDefaults and Keychain
+/// are both thread-safe; SwiftUI observation reads on the main thread
+/// in practice.
 @Observable
-@MainActor
-final class SettingsStore {
+final class SettingsStore: @unchecked Sendable {
     static let shared = SettingsStore()
 
     var boundTargetDescriptor: VolumeTargetDescriptor? {

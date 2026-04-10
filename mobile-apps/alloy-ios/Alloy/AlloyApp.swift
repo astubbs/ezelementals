@@ -2,15 +2,17 @@ import SwiftUI
 
 @main
 struct AlloyApp: App {
-    @State private var settings: SettingsStore = {
-        // UI tests launch with -AlloyResetOnLaunch YES so the wizard
-        // always shows up on a fresh slate, regardless of whatever
-        // lives in the simulator's UserDefaults from a previous run.
+    @State private var settings: SettingsStore
+
+    init() {
+        // Reset the bound target before any view body runs so UI tests
+        // launched with -AlloyResetOnLaunch always see the wizard, not
+        // a stale binding from a previous run.
         if CommandLine.arguments.contains("-AlloyResetOnLaunch") {
             SettingsStore.shared.clearBoundTarget()
         }
-        return SettingsStore.shared
-    }()
+        _settings = State(initialValue: SettingsStore.shared)
+    }
 
     var body: some Scene {
         WindowGroup {

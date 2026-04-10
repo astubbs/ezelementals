@@ -7,14 +7,15 @@ final class HomeAssistantTarget: VolumeTarget, @unchecked Sendable {
 
     let entityId: String
     private let connection: HomeAssistantConnection
-    private let range: VolumeRange
+    let volumeRange: VolumeRange
 
-    private var confirmedCont: AsyncStream<Int>.Continuation?
-    private var connectionCont: AsyncStream<ConnectionState>.Continuation?
+    private let confirmed: AsyncStream<Int>
+    private let confirmedCont: AsyncStream<Int>.Continuation
+    private let connectionStates: AsyncStream<ConnectionState>
+    private let connectionStatesCont: AsyncStream<ConnectionState>.Continuation
+
     private var wsTask: Task<Void, Never>?
     private var urlSessionTask: URLSessionWebSocketTask?
-
-    var volumeRange: VolumeRange { range }
 
     init(
         connection: HomeAssistantConnection,
@@ -23,21 +24,28 @@ final class HomeAssistantTarget: VolumeTarget, @unchecked Sendable {
     ) {
         self.connection = connection
         self.entityId = entityId
-        self.range = range
+        self.volumeRange = range
+
+        let (cStream, cCont) = AsyncStream<Int>.makeStream()
+        self.confirmed = cStream
+        self.confirmedCont = cCont
+
+        let (sStream, sCont) = AsyncStream<ConnectionState>.makeStream()
+        self.connectionStates = sStream
+        self.connectionStatesCont = sCont
     }
 
     func connect() async {
-        connectionCont?.yield(.connecting)
-        // Prime `confirmed` with the current state.
+        connectionStatesCont.yield(.connecting)
         do {
             let states = try await connection.fetchStates()
             if let match = states.first(where: { $0.entity_id == entityId }),
                let level = match.volumeLevel {
-                confirmedCont?.yield(levelToIntent(level))
+                confirmedCont.yield(levelToIntent(level))
             }
-            connectionCont?.yield(.connected)
+            connectionStatesCont.yield(.connected)
         } catch {
-            connectionCont?.yield(.failed(error.localizedDescription))
+            connectionStatesCont.yield(.failed(error.localizedDescription))
         }
         startWebSocket()
     }
@@ -47,36 +55,28 @@ final class HomeAssistantTarget: VolumeTarget, @unchecked Sendable {
         wsTask = nil
         urlSessionTask?.cancel(with: .goingAway, reason: nil)
         urlSessionTask = nil
-        connectionCont?.yield(.disconnected)
+        connectionStatesCont.yield(.disconnected)
     }
 
     func setVolume(_ intent: Int) async {
-        let clamped = range.clamp(intent)
-        let level = Double(clamped - range.min) / Double(max(1, range.max - range.min))
+        let clamped = volumeRange.clamp(intent)
+        let span = max(1, volumeRange.max - volumeRange.min)
+        let level = Double(clamped - volumeRange.min) / Double(span)
         do {
             try await connection.setVolumeLevel(entityId: entityId, level: level)
         } catch {
-            connectionCont?.yield(.failed(error.localizedDescription))
+            connectionStatesCont.yield(.failed(error.localizedDescription))
         }
     }
 
-    func confirmedStream() -> AsyncStream<Int> {
-        AsyncStream { continuation in
-            self.confirmedCont = continuation
-        }
-    }
-
-    func connectionStream() -> AsyncStream<ConnectionState> {
-        AsyncStream { continuation in
-            self.connectionCont = continuation
-        }
-    }
+    func confirmedStream() -> AsyncStream<Int> { confirmed }
+    func connectionStream() -> AsyncStream<ConnectionState> { connectionStates }
 
     // MARK: - Private
 
     private func levelToIntent(_ level: Double) -> Int {
-        let span = range.max - range.min
-        return range.min + Int((level * Double(span)).rounded())
+        let span = volumeRange.max - volumeRange.min
+        return volumeRange.min + Int((level * Double(span)).rounded())
     }
 
     private func startWebSocket() {
@@ -93,14 +93,12 @@ final class HomeAssistantTarget: VolumeTarget, @unchecked Sendable {
         self.urlSessionTask = task
         task.resume()
 
-        // auth handshake
         do {
-            _ = try await task.receive() // auth_required
+            _ = try await task.receive()
             let authMsg = #"{"type":"auth","access_token":"\#(token)"}"#
             try await task.send(.string(authMsg))
-            _ = try await task.receive() // auth_ok (or failure)
+            _ = try await task.receive()
 
-            // Subscribe to state_changed events.
             let subMsg = #"{"id":1,"type":"subscribe_events","event_type":"state_changed"}"#
             try await task.send(.string(subMsg))
 
@@ -111,12 +109,11 @@ final class HomeAssistantTarget: VolumeTarget, @unchecked Sendable {
                 }
             }
         } catch {
-            connectionCont?.yield(.failed(error.localizedDescription))
+            connectionStatesCont.yield(.failed(error.localizedDescription))
         }
     }
 
     private func handle(messageJSON text: String) {
-        // Minimal parsing: look for state_changed on our entity.
         guard text.contains("state_changed"),
               text.contains(entityId),
               let data = text.data(using: .utf8),
@@ -127,6 +124,6 @@ final class HomeAssistantTarget: VolumeTarget, @unchecked Sendable {
               let attrs = newState["attributes"] as? [String: Any],
               let level = attrs["volume_level"] as? Double
         else { return }
-        confirmedCont?.yield(levelToIntent(level))
+        confirmedCont.yield(levelToIntent(level))
     }
 }

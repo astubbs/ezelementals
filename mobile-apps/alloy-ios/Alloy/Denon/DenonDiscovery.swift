@@ -1,17 +1,16 @@
 import Foundation
 import Network
 
-/// Finds Denon/Marantz AVRs on the local network via SSDP + mDNS.
-/// Streams results as they arrive.
-///
-/// M1 implements a lightweight SSDP M-SEARCH probe and basic mDNS
-/// browsing via `NWBrowser`. Full UPnP descriptor parsing is deferred
-/// until we have quirks to document.
+/// Finds Denon/Marantz AVRs on the local network via mDNS. An SSDP
+/// lane is planned but stubbed for M1 — `NWConnectionGroup` and
+/// `NWMulticastGroup` give us the primitives we need, but a robust
+/// SSDP implementation needs more care than belongs in a scaffold,
+/// and most modern D/M models also advertise over mDNS. See the
+/// diary entry for the rationale.
 actor DenonDiscovery {
 
     private var continuation: AsyncStream<DiscoveredAvr>.Continuation?
-    private var browser: NWBrowser?
-    private var ssdpTask: Task<Void, Never>?
+    private var browsers: [NWBrowser] = []
 
     nonisolated let stream: AsyncStream<DiscoveredAvr>
 
@@ -23,23 +22,25 @@ actor DenonDiscovery {
 
     func start() async {
         await startMdns()
-        ssdpTask = Task { await runSsdp() }
+        // TODO(M1.1): add an SSDP M-SEARCH lane. This needs a BSD
+        // multicast socket; NWConnectionGroup works but its API is
+        // finicky enough that rushing it here breaks more than it
+        // helps. Capturing the choice in the diary.
     }
 
     func stop() {
-        browser?.cancel()
-        browser = nil
-        ssdpTask?.cancel()
-        ssdpTask = nil
+        browsers.forEach { $0.cancel() }
+        browsers = []
         continuation?.finish()
     }
 
     // MARK: - mDNS
 
     private func startMdns() async {
-        // Denon/Marantz AVRs don't all expose a single well-known
-        // service type. We probe a few common ones used by their
-        // HEOS integration and generic audio services.
+        // Denon/Marantz AVRs don't expose a single well-known service
+        // type. Probe a few common ones used by their HEOS and generic
+        // audio services. Any that match get yielded to the discovery
+        // combiner.
         let types = [
             "_airplay._tcp",
             "_raop._tcp",
@@ -54,8 +55,7 @@ actor DenonDiscovery {
                 Task { await self?.handleMdns(results: results) }
             }
             browser.start(queue: .global(qos: .userInitiated))
-            // Keep only the last one so `stop()` can cancel it.
-            self.browser = browser
+            browsers.append(browser)
         }
     }
 
@@ -74,62 +74,5 @@ actor DenonDiscovery {
             )
             continuation?.yield(avr)
         }
-    }
-
-    // MARK: - SSDP
-
-    private func runSsdp() async {
-        // Fire an M-SEARCH once and listen for responses for ~5s.
-        // This is a minimal implementation; production-grade SSDP
-        // libraries handle retries, socket reuse, IPv6, etc.
-        let msearch = """
-        M-SEARCH * HTTP/1.1\r
-        HOST: 239.255.255.250:1900\r
-        MAN: "ssdp:discover"\r
-        MX: 2\r
-        ST: ssdp:all\r
-        \r
-
-        """
-        let group = NWConnectionGroup(
-            with: .init(hostPort: .init(host: "239.255.255.250", port: 1900)),
-            using: .udp
-        )
-        guard let data = msearch.data(using: .utf8) else { return }
-        group.receiveHandler(maximumMessageSize: 4096, rejectOversizedMessages: true) { [weak self] _, content, _ in
-            guard let content, let text = String(data: content, encoding: .utf8) else { return }
-            Task { await self?.handleSsdp(response: text) }
-        }
-        group.stateUpdateHandler = { _ in }
-        group.start(queue: .global(qos: .userInitiated))
-        group.send(content: data, completion: { _ in })
-        try? await Task.sleep(nanoseconds: 5_000_000_000)
-        group.cancel()
-    }
-
-    private func handleSsdp(response: String) async {
-        // Denon devices identify themselves in the SERVER header.
-        let lower = response.lowercased()
-        guard lower.contains("denon") || lower.contains("marantz") else { return }
-        // Extract LOCATION header (descriptor XML URL), then host.
-        let lines = response.split(separator: "\r\n")
-        var location: String?
-        for line in lines where line.lowercased().hasPrefix("location:") {
-            location = line
-                .dropFirst("location:".count)
-                .trimmingCharacters(in: .whitespaces)
-            break
-        }
-        guard let location, let url = URL(string: location), let host = url.host else { return }
-
-        let avr = DiscoveredAvr(
-            id: "ssdp:\(host)",
-            friendlyName: host,
-            modelName: nil,
-            host: host,
-            port: 23,
-            sources: [.denonDirect]
-        )
-        continuation?.yield(avr)
     }
 }

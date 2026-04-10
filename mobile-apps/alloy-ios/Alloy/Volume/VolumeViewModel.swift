@@ -39,22 +39,21 @@ final class VolumeViewModel {
     // MARK: - Lifecycle
 
     func start() {
+        // These Tasks inherit the MainActor context from the enclosing
+        // @MainActor method, so all state mutations happen on the main
+        // actor without any explicit `MainActor.run` hops.
         confirmedTask = Task { [weak self] in
             guard let self else { return }
             for await value in target.confirmedStream() {
-                await MainActor.run {
-                    self.confirmed = value
-                    if !self.isDragging { self.intent = value }
-                    self.range = self.target.volumeRange
-                }
+                self.confirmed = value
+                if !self.isDragging { self.intent = value }
+                self.range = self.target.volumeRange
             }
         }
         connectionTask = Task { [weak self] in
             guard let self else { return }
             for await state in target.connectionStream() {
-                await MainActor.run {
-                    self.connectionState = state
-                }
+                self.connectionState = state
             }
         }
         Task { await target.connect() }
@@ -81,8 +80,6 @@ final class VolumeViewModel {
 
     func onDragEnd() {
         isDragging = false
-        // Trailing-edge send with whatever the final intent is, even
-        // if the throttle window hasn't elapsed.
         let final = intent
         throttleTask?.cancel()
         throttleTask = nil
@@ -98,12 +95,10 @@ final class VolumeViewModel {
         throttleTask = Task { [weak self] in
             guard let self else { return }
             try? await Task.sleep(for: self.throttleInterval)
-            let toSend = await MainActor.run { () -> Int? in
-                let v = self.pendingIntent
-                self.pendingIntent = nil
-                self.throttleTask = nil
-                return v
-            }
+            // Still on MainActor thanks to @_inheritActorContext.
+            let toSend = self.pendingIntent
+            self.pendingIntent = nil
+            self.throttleTask = nil
             if let toSend {
                 await self.target.setVolume(toSend)
             }

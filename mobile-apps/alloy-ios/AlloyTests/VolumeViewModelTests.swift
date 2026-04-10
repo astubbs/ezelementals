@@ -4,14 +4,13 @@ import XCTest
 @MainActor
 final class VolumeViewModelTests: XCTestCase {
 
-    func test_dragUpdatesIntentLocallyWithoutAwaitingNetwork() async {
+    func test_dragUpdatesIntentLocallyWithoutAwaitingNetwork() {
         let target = SpyTarget()
         let model = VolumeViewModel(target: target)
 
         model.onDragStart()
         model.onDragChange(42)
         XCTAssertEqual(model.intent, 42)
-        // No need to wait — intent is set synchronously.
     }
 
     func test_rapidDragCoalescesSends() async throws {
@@ -20,10 +19,12 @@ final class VolumeViewModelTests: XCTestCase {
 
         model.onDragStart()
         for v in 30...40 { model.onDragChange(v) }
-        // Wait just past one throttle window.
         try await Task.sleep(nanoseconds: 150_000_000)
-        let count = await target.setVolumeCalls.count
-        XCTAssertLessThanOrEqual(count, 2, "Expected at most one throttled send during the rapid drag")
+        XCTAssertLessThanOrEqual(
+            target.setVolumeCalls.count,
+            2,
+            "Expected at most one throttled send during the rapid drag"
+        )
     }
 
     func test_dragEndAlwaysSendsFinalValue() async throws {
@@ -34,8 +35,7 @@ final class VolumeViewModelTests: XCTestCase {
         model.onDragChange(55)
         model.onDragEnd()
         try await Task.sleep(nanoseconds: 50_000_000)
-        let last = await target.setVolumeCalls.last
-        XCTAssertEqual(last, 55, "Trailing-edge send should include the final intent")
+        XCTAssertEqual(target.setVolumeCalls.last, 55)
     }
 
     func test_confirmedStreamDoesNotOverwriteIntentWhileDragging() async throws {
@@ -45,7 +45,7 @@ final class VolumeViewModelTests: XCTestCase {
         model.onDragStart()
         model.onDragChange(70)
 
-        await target.emitConfirmed(30)
+        target.emitConfirmed(30)
         try await Task.sleep(nanoseconds: 50_000_000)
         XCTAssertEqual(model.intent, 70, "Dragging must win while the user is actively dragging")
         XCTAssertEqual(model.confirmed, 30)
@@ -56,7 +56,7 @@ final class VolumeViewModelTests: XCTestCase {
         let model = VolumeViewModel(target: target)
         model.start()
 
-        await target.emitConfirmed(42)
+        target.emitConfirmed(42)
         try await Task.sleep(nanoseconds: 50_000_000)
         XCTAssertEqual(model.intent, 42)
         XCTAssertEqual(model.confirmed, 42)
@@ -65,44 +65,46 @@ final class VolumeViewModelTests: XCTestCase {
 
 // MARK: - Test double
 
-@MainActor
-final class SpyTarget: VolumeTarget {
-    nonisolated let volumeRange: VolumeRange = .denonDefault
-    var setVolumeCalls: [Int] = []
+/// Deliberately *not* `@MainActor`. The real targets are plain
+/// reference types that synchronise via their own plumbing, and the
+/// spy should behave the same way so the view model code paths under
+/// test are the real ones.
+final class SpyTarget: VolumeTarget, @unchecked Sendable {
+    let volumeRange: VolumeRange = .denonDefault
 
-    private var confirmedCont: AsyncStream<Int>.Continuation?
-    private var connectionCont: AsyncStream<ConnectionState>.Continuation?
-    private var confirmedStreamHolder: AsyncStream<Int>?
-    private var connectionStreamHolder: AsyncStream<ConnectionState>?
-
-    nonisolated func connect() async {}
-    nonisolated func disconnect() async {}
-
-    nonisolated func setVolume(_ intent: Int) async {
-        await record(intent)
+    private let lock = NSLock()
+    private var _setVolumeCalls: [Int] = []
+    var setVolumeCalls: [Int] {
+        lock.lock(); defer { lock.unlock() }
+        return _setVolumeCalls
     }
 
-    private func record(_ intent: Int) {
-        setVolumeCalls.append(intent)
+    private let confirmed: AsyncStream<Int>
+    private let confirmedCont: AsyncStream<Int>.Continuation
+    private let connectionStates: AsyncStream<ConnectionState>
+    private let connectionStatesCont: AsyncStream<ConnectionState>.Continuation
+
+    init() {
+        let (cStream, cCont) = AsyncStream<Int>.makeStream()
+        self.confirmed = cStream
+        self.confirmedCont = cCont
+        let (sStream, sCont) = AsyncStream<ConnectionState>.makeStream()
+        self.connectionStates = sStream
+        self.connectionStatesCont = sCont
     }
 
-    nonisolated func confirmedStream() -> AsyncStream<Int> {
-        return AsyncStream { continuation in
-            Task { @MainActor in
-                self.confirmedCont = continuation
-            }
-        }
+    func connect() async {}
+    func disconnect() async {}
+
+    func setVolume(_ intent: Int) async {
+        lock.lock(); defer { lock.unlock() }
+        _setVolumeCalls.append(intent)
     }
 
-    nonisolated func connectionStream() -> AsyncStream<ConnectionState> {
-        return AsyncStream { continuation in
-            Task { @MainActor in
-                self.connectionCont = continuation
-            }
-        }
-    }
+    func confirmedStream() -> AsyncStream<Int> { confirmed }
+    func connectionStream() -> AsyncStream<ConnectionState> { connectionStates }
 
     func emitConfirmed(_ value: Int) {
-        confirmedCont?.yield(value)
+        confirmedCont.yield(value)
     }
 }

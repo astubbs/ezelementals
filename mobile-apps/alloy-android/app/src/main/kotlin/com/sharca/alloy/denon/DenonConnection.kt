@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.BufferedReader
@@ -42,17 +43,18 @@ class DenonConnection(
 
     private var socket: Socket? = null
     private var writer: OutputStream? = null
-    private var readJob: Job? = null
+    private var loopJob: Job? = null
     private var backoff: Long = 1_000L
     private val maxBackoff: Long = 30_000L
 
     fun start() {
-        scope.launch { connectLoop() }
+        if (loopJob?.isActive == true) return
+        loopJob = scope.launch { connectLoop() }
     }
 
     fun stop() {
-        readJob?.cancel()
-        readJob = null
+        loopJob?.cancel()
+        loopJob = null
         try { socket?.close() } catch (_: Throwable) {}
         socket = null
         _state.value = ConnectionState.Disconnected
@@ -82,7 +84,7 @@ class DenonConnection(
                 val reader = BufferedReader(InputStreamReader(s.getInputStream(), Charsets.US_ASCII))
                 val buffer = StringBuilder()
                 val chars = CharArray(256)
-                while (true) {
+                while (scope.isActive) {
                     val n = reader.read(chars)
                     if (n < 0) break
                     for (i in 0 until n) {
@@ -105,10 +107,9 @@ class DenonConnection(
                 socket = null
                 writer = null
             }
+            if (!scope.isActive) break
             delay(backoff)
             backoff = (backoff * 2).coerceAtMost(maxBackoff)
         }
     }
-
-    private val CoroutineScope.isActive: Boolean get() = coroutineContext[Job]?.isActive == true
 }
