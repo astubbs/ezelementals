@@ -3,7 +3,7 @@
 > **Status:** skeleton.
 >
 > **Implementations:** `alloy-ios/Alloy/Target/`,
-> `alloy-android/app/src/main/kotlin/com/alloyremote/alloy/target/`.
+> `alloy-android/app/src/main/kotlin/com/sharca/alloy/target/`.
 
 `VolumeTarget` is the abstract interface every volume backend
 implements. The volume view model consumes a `VolumeTarget` — it does

@@ -29,7 +29,7 @@ device or emulator running API 29 (Android 10) or higher.
 ## Layout
 
 ```
-app/src/main/kotlin/com/alloyremote/alloy/
+app/src/main/kotlin/com/sharca/alloy/
   root/                     # app entry + navigation between onboarding and volume
   model/                    # shared value types (DiscoveredAvr, ConnectionState)
   target/                   # VolumeTarget interface + implementations

@@ -16,7 +16,7 @@ both platforms, plus CI workflows and a first round of unit tests.
 
 - `project.yml` for XcodeGen (the `.xcodeproj` is generated, not
   checked in). Deployment target iOS 17. Bundle id
-  `com.alloyremote.alloy`.
+  `com.sharca.alloy`.
 - Model layer: `DiscoveredAvr`, `ConnectionState`, `VolumeRange`.
 - `VolumeTarget` protocol + `VolumeTargetDescriptor` serializable
   enum; implementations `DenonDirectTarget` and

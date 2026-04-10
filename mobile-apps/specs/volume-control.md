@@ -3,7 +3,7 @@
 > **Status:** skeleton. Fills in as M1 is implemented.
 >
 > **Implementations:** `alloy-ios/Alloy/Volume/`,
-> `alloy-android/app/src/main/kotlin/com/alloyremote/alloy/volume/`.
+> `alloy-android/app/src/main/kotlin/com/sharca/alloy/volume/`.
 
 The volume control is the canonical implementation of the app's UX
 principles. Every other control surface in Alloy inherits its

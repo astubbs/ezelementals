@@ -3,7 +3,7 @@
 > **Status:** skeleton.
 >
 > **Implementations:** `alloy-ios/Alloy/Onboarding/`,
-> `alloy-android/app/src/main/kotlin/com/alloyremote/alloy/onboarding/`.
+> `alloy-android/app/src/main/kotlin/com/sharca/alloy/onboarding/`.
 
 The onboarding wizard is the app's first-launch experience and is
 re-runnable from settings. Its only job in M1 is to bind a single

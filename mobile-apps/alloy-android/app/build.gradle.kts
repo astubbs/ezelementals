@@ -6,15 +6,16 @@ plugins {
 }
 
 android {
-    namespace = "com.alloyremote.alloy"
+    namespace = "com.sharca.alloy"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.alloyremote.alloy"
+        applicationId = "com.sharca.alloy"
         minSdk = 29
         targetSdk = 34
         versionCode = 1
         versionName = "0.1.0"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildFeatures {
@@ -36,6 +37,9 @@ android {
         }
         getByName("test") {
             java.srcDirs("src/test/kotlin")
+        }
+        getByName("androidTest") {
+            java.srcDirs("src/androidTest/kotlin")
         }
     }
 
@@ -64,6 +68,13 @@ dependencies {
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
+
+    // UI / smoke tests — run on device or emulator
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    androidTestImplementation("androidx.test:runner:1.6.1")
+    androidTestImplementation(platform("androidx.compose:compose-bom:2024.06.00"))
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
 }

@@ -7,7 +7,7 @@ final class SecureStore: @unchecked Sendable {
     static let shared = SecureStore()
     private init() {}
 
-    private let service = "com.alloyremote.alloy"
+    private let service = "com.sharca.alloy"
 
     enum SecureStoreError: Error {
         case unexpectedStatus(OSStatus)
