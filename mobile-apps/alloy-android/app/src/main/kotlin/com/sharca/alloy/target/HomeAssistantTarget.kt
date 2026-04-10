@@ -5,7 +5,6 @@ import com.sharca.alloy.model.ConnectionState
 import com.sharca.alloy.model.VolumeRange
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -13,6 +12,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.doubleOrNull
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
@@ -33,6 +36,7 @@ class HomeAssistantTarget(
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val wsClient = OkHttpClient()
     private var webSocket: WebSocket? = null
+    private val json = Json { ignoreUnknownKeys = true }
 
     private val _confirmed = MutableSharedFlow<Int>(extraBufferCapacity = 16)
     private val _state = MutableStateFlow<ConnectionState>(ConnectionState.Disconnected)
@@ -84,9 +88,7 @@ class HomeAssistantTarget(
                     ws.send("""{"id":1,"type":"subscribe_events","event_type":"state_changed"}""")
                     return
                 }
-                if (text.contains("state_changed") && text.contains(entityId)) {
-                    handlePush(text)
-                }
+                handlePush(text)
             }
 
             override fun onFailure(ws: WebSocket, t: Throwable, response: Response?) {
@@ -95,13 +97,44 @@ class HomeAssistantTarget(
         })
     }
 
-    private fun handlePush(json: String) {
-        val level = json.substringAfter("\"volume_level\":", "")
-            .takeWhile { it != ',' && it != '}' }
-            .trim()
-            .toDoubleOrNull()
-            ?: return
+    /**
+     * Parse a Home Assistant WebSocket message and, if it's a
+     * `state_changed` event for our bound entity, extract the new
+     * `volume_level` and emit it as a confirmed value.
+     *
+     * The shape we expect (with extras we don't care about):
+     * ```
+     * {
+     *   "type": "event",
+     *   "event": {
+     *     "event_type": "state_changed",
+     *     "data": {
+     *       "entity_id": "media_player.denon",
+     *       "new_state": { "attributes": { "volume_level": 0.42 } }
+     *     }
+     *   }
+     * }
+     * ```
+     *
+     * Anything that doesn't fit (auth replies, ping/pong, events for
+     * other entities, malformed payloads) is silently ignored.
+     */
+    private fun handlePush(text: String) {
+        val level = extractVolumeLevel(text) ?: return
         scope.launch { _confirmed.emit(levelToIntent(level)) }
+    }
+
+    internal fun extractVolumeLevel(text: String): Double? {
+        val root = runCatching { json.parseToJsonElement(text).jsonObject }
+            .getOrNull() ?: return null
+        if (root["type"]?.jsonPrimitive?.content != "event") return null
+        val event = root["event"]?.jsonObject ?: return null
+        if (event["event_type"]?.jsonPrimitive?.content != "state_changed") return null
+        val data = event["data"]?.jsonObject ?: return null
+        if (data["entity_id"]?.jsonPrimitive?.content != entityId) return null
+        val newState = data["new_state"]?.jsonObject ?: return null
+        val attributes = newState["attributes"]?.jsonObject ?: return null
+        return attributes["volume_level"]?.jsonPrimitive?.doubleOrNull
     }
 
     private fun levelToIntent(level: Double): Int {
