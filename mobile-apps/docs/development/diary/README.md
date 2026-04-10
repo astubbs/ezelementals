@@ -43,3 +43,8 @@ covers it, a diary entry is probably overkill.
 - [`2026-04-11-b-m1-scaffold.md`](2026-04-11-b-m1-scaffold.md) —
   M1 scaffold: both native apps laid down end-to-end following the
   shared specs, plus CI workflows and first unit tests.
+- [`2026-04-11-c-visual-smoke-tests.md`](2026-04-11-c-visual-smoke-tests.md) —
+  Closing the smoke-test gap on iOS: pixel-variance helper,
+  ImageRenderer-based unit snapshot tests, and XCUITest screenshot
+  assertions. Why accessibility-tree queries weren't catching
+  blank-screen rendering bugs.

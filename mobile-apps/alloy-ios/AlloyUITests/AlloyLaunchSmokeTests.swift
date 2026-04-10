@@ -4,11 +4,16 @@ import XCTest
 /// through the very first screens, assert the app actually renders
 /// what the onboarding spec says it should.
 ///
-/// These tests deliberately do *not* require real hardware — they
-/// verify the UI comes up and the wizard reaches a "no receivers
-/// yet" state that still offers the Connect Home Assistant action.
-/// Hardware-dependent flows are verified manually; see the M1 scope
-/// diary entry.
+/// **These tests must verify visible rendering, not just the
+/// accessibility tree.** XCUITest's `staticTexts[...].exists` query
+/// only inspects the accessibility hierarchy — a SwiftUI view that
+/// crashes during init or collapses to zero size can still report
+/// existence and pass an `.exists` check while the screen is blank.
+/// Every assertion below pairs an existence check with either
+/// `.isHittable` (which requires the element to be on-screen,
+/// non-zero in size, and not covered) or a frame-size assertion.
+/// The launch test also captures a real screenshot and asserts a
+/// luminance variance above a "blank screen" threshold.
 final class AlloyLaunchSmokeTests: XCTestCase {
 
     override func setUpWithError() throws {
@@ -20,14 +25,34 @@ final class AlloyLaunchSmokeTests: XCTestCase {
         app.launchArguments += ["-AlloyResetOnLaunch", "YES"]
         app.launch()
 
-        // Welcome screen: big Alloy title and a "Get started" primary button.
+        let title = app.staticTexts["Alloy"]
         XCTAssertTrue(
-            app.staticTexts["Alloy"].waitForExistence(timeout: 5),
+            title.waitForExistence(timeout: 5),
             "Expected the Welcome screen title to appear on launch"
         )
         XCTAssertTrue(
-            app.buttons["Get started"].exists,
-            "Expected the Welcome screen's primary button"
+            title.isHittable,
+            "Welcome title is in the accessibility tree but not visible on screen"
+        )
+        XCTAssertGreaterThan(
+            title.frame.height, 10,
+            "Welcome title collapsed to near-zero height"
+        )
+
+        let getStarted = app.buttons["Get started"]
+        XCTAssertTrue(getStarted.exists, "Expected the Welcome screen's primary button")
+        XCTAssertTrue(getStarted.isHittable, "Get started button is not interactive")
+        XCTAssertGreaterThan(getStarted.frame.height, 20, "Get started button collapsed")
+
+        // Pixel-level guarantee that something actually rendered.
+        // A truly blank screen has near-zero luminance variance; the
+        // Welcome screen sits well above the threshold.
+        let screenshot = XCUIScreen.main.screenshot().image
+        let variance = PixelSmoke.variance(of: screenshot)
+        XCTAssertGreaterThan(
+            variance,
+            PixelSmoke.defaultMinimumVariance,
+            "Launch screenshot looks blank (variance \(variance))"
         )
     }
 
@@ -38,18 +63,36 @@ final class AlloyLaunchSmokeTests: XCTestCase {
 
         let getStarted = app.buttons["Get started"]
         XCTAssertTrue(getStarted.waitForExistence(timeout: 5))
+        XCTAssertTrue(getStarted.isHittable)
         getStarted.tap()
 
+        let discoveryHeader = app.staticTexts["Looking for receivers…"]
         XCTAssertTrue(
-            app.staticTexts["Looking for receivers…"].waitForExistence(timeout: 5),
+            discoveryHeader.waitForExistence(timeout: 5),
             "Expected the Discovery screen after tapping Get started"
         )
-        // The Connect Home Assistant action must be present even when
-        // zero direct results have been found — this is a spec
-        // guarantee (see specs/onboarding.md).
         XCTAssertTrue(
-            app.buttons["Connect Home Assistant"].exists,
+            discoveryHeader.isHittable,
+            "Discovery screen header isn't visibly rendered"
+        )
+
+        let connectHA = app.buttons["Connect Home Assistant"]
+        XCTAssertTrue(
+            connectHA.exists,
             "Discovery screen must offer Connect Home Assistant as a first-class action"
+        )
+        XCTAssertTrue(
+            connectHA.isHittable,
+            "Connect Home Assistant button isn't interactive"
+        )
+
+        // Same pixel-variance guarantee on the second screen.
+        let screenshot = XCUIScreen.main.screenshot().image
+        let variance = PixelSmoke.variance(of: screenshot)
+        XCTAssertGreaterThan(
+            variance,
+            PixelSmoke.defaultMinimumVariance,
+            "Discovery screen screenshot looks blank (variance \(variance))"
         )
     }
 }
