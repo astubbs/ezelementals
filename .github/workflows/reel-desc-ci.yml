@@ -1,10 +1,20 @@
-name: CI
+name: ReelDesc CI
 
 on:
   push:
     branches: [spike, main]
+    paths:
+      - "reel-desc/**"
+      - ".github/workflows/ci.yml"
   pull_request:
     branches: [spike, main]
+    paths:
+      - "reel-desc/**"
+      - ".github/workflows/ci.yml"
+
+defaults:
+  run:
+    working-directory: reel-desc
 
 jobs:
   test:
@@ -20,6 +30,7 @@ jobs:
         uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
+          working-directory: reel-desc
 
       - name: Set up Python ${{ matrix.python-version }}
         run: uv python install ${{ matrix.python-version }}

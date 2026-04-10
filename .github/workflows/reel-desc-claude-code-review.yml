@@ -1,14 +1,11 @@
-name: Claude Code Review
+name: ReelDesc Claude Code Review
 
 on:
   pull_request:
     types: [opened, synchronize, ready_for_review, reopened]
-    # Optional: Only run on specific file changes
-    # paths:
-    #   - "src/**/*.ts"
-    #   - "src/**/*.tsx"
-    #   - "src/**/*.js"
-    #   - "src/**/*.jsx"
+    paths:
+      - "reel-desc/**"
+      - ".github/workflows/reel-desc-claude-code-review.yml"
 
 jobs:
   claude-review:
