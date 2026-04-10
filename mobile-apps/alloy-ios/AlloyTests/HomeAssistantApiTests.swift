@@ -19,7 +19,7 @@ final class HomeAssistantApiTests: XCTestCase {
         let state = try JSONDecoder().decode(HAState.self, from: json)
         XCTAssertEqual(state.entity_id, "media_player.denon")
         XCTAssertEqual(state.friendlyName, "Living Room AVR")
-        XCTAssertEqual(state.volumeLevel, 0.42, accuracy: 0.0001)
+        XCTAssertEqual(try XCTUnwrap(state.volumeLevel), 0.42, accuracy: 0.0001)
         XCTAssertEqual(state.deviceClass, "receiver")
     }
 

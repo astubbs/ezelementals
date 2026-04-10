@@ -62,15 +62,19 @@ actor HomeAssistantConnection {
         }
     }
 
-    var websocketURL: URL {
+    // The values below are derived from `config`, which is set once
+    // in init and never mutated. Marking them `nonisolated` lets
+    // discovery + target plumbing read them without hopping onto the
+    // actor for every URL or token lookup.
+    nonisolated var websocketURL: URL {
         var comps = URLComponents(url: config.baseURL, resolvingAgainstBaseURL: false) ?? URLComponents()
         comps.scheme = (comps.scheme == "https") ? "wss" : "ws"
         comps.path = "/api/websocket"
         return comps.url ?? config.baseURL.appendingPathComponent("api/websocket")
     }
 
-    var token: String { config.token }
-    var baseURL: URL { config.baseURL }
+    nonisolated var token: String { config.token }
+    nonisolated var baseURL: URL { config.baseURL }
 }
 
 // MARK: - Models

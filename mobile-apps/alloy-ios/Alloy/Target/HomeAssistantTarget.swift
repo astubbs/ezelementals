@@ -87,8 +87,8 @@ final class HomeAssistantTarget: VolumeTarget, @unchecked Sendable {
     }
 
     private func runWebSocketLoop() async {
-        let url = await connection.websocketURL
-        let token = await connection.token
+        let url = connection.websocketURL
+        let token = connection.token
         let task = URLSession.shared.webSocketTask(with: url)
         self.urlSessionTask = task
         task.resume()
