@@ -40,3 +40,6 @@ covers it, a diary entry is probably overkill.
 - [`2026-04-11-m1-scope.md`](2026-04-11-m1-scope.md) — M1 scope
   settled: volume control + first-launch onboarding wizard with
   Denon direct and Home Assistant discovery.
+- [`2026-04-11-b-m1-scaffold.md`](2026-04-11-b-m1-scaffold.md) —
+  M1 scaffold: both native apps laid down end-to-end following the
+  shared specs, plus CI workflows and first unit tests.
