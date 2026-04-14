@@ -19,11 +19,15 @@ npm run dev    # Vite dev server with hot reload (proxies API to FastAPI)
 ### Running tests
 
 ```sh
-bin/test.sh    # Full test suite
+bin/test.sh    # Python test suite
 uv run pytest  # Direct pytest invocation
+
+cd ui
+npm test       # Frontend tests (Vitest, watch mode)
+npm run test:run  # Frontend tests (single run)
 ```
 
-Tests run on Python 3.11 and 3.12 in CI.
+Python tests run on 3.11 and 3.12 in CI. Frontend tests use Vitest + React Testing Library + jsdom.
 
 ## Project structure
 

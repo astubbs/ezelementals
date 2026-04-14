@@ -15,6 +15,7 @@ ReelDesc is an open-source pipeline that generates dense semantic understanding 
 ## For Developers
 
 - [Architecture](developer/architecture.md) — pipeline flow, package structure, key abstractions
+- [Studio Architecture](developer/studio-architecture.md) — web UI components, REST API, WebSocket protocol, known gaps
 - [Timeline Format](developer/timeline-format.md) — `timeline.jsonl` schema and examples
 - [Bundle Format](developer/bundle-format.md) — bundle directory specification
 - [.3fx Format](developer/threefx-format.md) — elemental effects track specification
