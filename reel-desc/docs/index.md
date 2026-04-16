@@ -29,3 +29,4 @@ ReelDesc is an open-source pipeline that generates dense semantic understanding 
 - [Project Outline](internal/project-outline.md) — full vision document
 - [Naming](internal/naming.md) — naming decisions and research
 - [Milestones](internal/milestones.md) — M0–M7 milestone tracker
+- [Development Diary](internal/diary/README.md) — chronological record of decisions, discoveries, and lessons
