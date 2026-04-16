@@ -66,7 +66,7 @@ src/reeldesc/
 ## Documentation
 
 - **Users:** [Getting Started](docs/user/getting-started.md) · [CLI Reference](docs/user/cli-reference.md) · [Studio UI](docs/user/studio-ui.md) · [Device Setup](docs/user/device-setup.md) · [Bundles](docs/user/bundles.md)
-- **Developers:** [Architecture](docs/developer/architecture.md) · [Timeline Format](docs/developer/timeline-format.md) · [Bundle Format](docs/developer/bundle-format.md) · [.3fx Format](docs/developer/threefx-format.md) · [Contributing](docs/developer/contributing.md)
+- **Developers:** [Architecture](docs/developer/architecture.md) · [Studio Architecture](docs/developer/studio-architecture.md) · [Timeline Format](docs/developer/timeline-format.md) · [Bundle Format](docs/developer/bundle-format.md) · [.3fx Format](docs/developer/threefx-format.md) · [Contributing](docs/developer/contributing.md)
 - **Internal:** [Pivot Plan](docs/internal/pivot-semantic-media-database.md) · [Milestones](docs/internal/milestones.md) · [Naming](docs/internal/naming.md) · [Project Outline](docs/internal/project-outline.md)
 
 ## Related
