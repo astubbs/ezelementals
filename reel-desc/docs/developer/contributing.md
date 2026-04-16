@@ -23,11 +23,16 @@ bin/test.sh    # Python test suite
 uv run pytest  # Direct pytest invocation
 
 cd ui
-npm test       # Frontend tests (Vitest, watch mode)
-npm run test:run  # Frontend tests (single run)
+npm test           # Frontend unit tests (Vitest, watch mode)
+npm run test:run   # Frontend unit tests (single run)
+npm run e2e:install  # One-time: install Chromium for Playwright
+npm run e2e        # Frontend E2E tests (Playwright, real FastAPI backend)
 ```
 
-Python tests run on 3.11 and 3.12 in CI. Frontend tests use Vitest + React Testing Library + jsdom.
+Three test layers:
+- **Python tests** — pytest on 3.11 and 3.12 in CI. Covers pipeline stages with mocked Ollama/ffmpeg.
+- **Frontend unit tests** — Vitest + React Testing Library + jsdom. Components and pages with API calls mocked at module level. Mock data in `ui/src/test/mocks/api.ts`.
+- **E2E tests** — Playwright in `ui/e2e/`. Launches `bin/ui.sh` (builds frontend + starts FastAPI on :8765) and drives a real browser against the live stack. No API mocking.
 
 ## Project structure
 
