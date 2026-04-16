@@ -213,6 +213,8 @@ Manage physical effect devices connected via Home Assistant.
 |---------|--------|-------------|
 | Device list | Implemented | Shows all devices with type icon, label, position, channel, HA entity, latency |
 | Remove device | Implemented | Delete a device from configuration |
+| Add device (inline form) | Implemented | Add Device button opens an inline form with type, label, position, channel, HA entity, latency fields. Type change auto-sets sensible defaults for channel and latency |
+| Edit device (inline form) | Implemented | Edit button opens the inline form pre-filled with the device's values |
 | Empty state | Implemented | "No devices configured yet" with prompt to run wizard |
 | Setup Wizard button | Implemented | Opens the 5-step device setup wizard |
 | Setup Wizard | Implemented | Multi-step flow: Fans → Misters → Radiant Heaters → Ambient Heaters/AC → Proxy Bulbs |
@@ -224,9 +226,6 @@ Manage physical effect devices connected via Home Assistant.
 
 ### Not yet implemented
 
-- Add Device button (handler is empty — TODO)
-- Edit Device button (handler is empty — no click handler)
-- Inline device editing without wizard
 - Device test button (trigger a test pulse on the physical device)
 - Drag to reorder devices
 

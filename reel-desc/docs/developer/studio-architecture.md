@@ -191,8 +191,6 @@ These are documented stubs or incomplete features:
 
 | Area | Gap | Location |
 |------|-----|----------|
-| DeviceConfig | "Add Device" button handler is empty | `DeviceConfig.tsx:44` |
-| DeviceConfig | "Edit" button has no click handler | `DeviceConfig.tsx:77` |
 | ReviewQueue | Frame/spectrogram images show "unavailable" placeholder | `ReviewQueue.tsx:121-127` |
 | Player | Timeline is display-only — no click-to-seek | `Player.tsx:68` |
 | Sidebar | Logo says "3E" (legacy ezElementals branding) | `App.tsx:27` |
