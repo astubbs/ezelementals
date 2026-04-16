@@ -182,6 +182,14 @@ jobs:
       - name: Install npm dependencies
         run: npm ci
 
+      # ffmpeg is required by two things:
+      #   1. e2e/global-setup.ts generates a synthetic test video
+      #   2. the real encode pipeline (stub_llm skips Ollama, not ffmpeg)
+      # Python pipeline tests mock ffmpeg at the subprocess level, so
+      # it's not already installed on the runner.
+      - name: Install ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
       # Cache Playwright's browser download keyed on the Playwright version
       # in the lockfile. Without this, every run re-downloads ~200MB of
       # Chromium.

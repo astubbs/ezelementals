@@ -43,11 +43,10 @@ def test_save_and_load_roundtrip_under_override(monkeypatch, tmp_path):
     }
     config.save_settings(custom)
 
-    # File landed in the override dir, not in ~/.config/reeldesc
+    # File landed in the override dir, not in ~/.config/reeldesc.
+    # We can't assert the home file doesn't exist (user might have
+    # one), but we verify the override path is where we wrote.
     assert (tmp_path / "settings.json").exists()
-    home_settings = Path.home() / ".config" / "reeldesc" / "settings.json"
-    # We can't assert the home file doesn't exist (user might have one), but
-    # we can verify the override path is where we wrote
     loaded = config.load_settings()
     assert loaded["media_roots"] == ["/tmp/movies"]
     assert loaded["encoding_defaults"]["stub_llm"] is True
