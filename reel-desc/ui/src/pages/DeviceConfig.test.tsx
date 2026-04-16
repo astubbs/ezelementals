@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { mockDevices } from '../test/mocks/api'
 
 vi.mock('../lib/api', () => ({
@@ -54,5 +55,41 @@ describe('DeviceConfig page', () => {
     await screen.findByText('Front Fan')
     const editButtons = screen.getAllByTitle('Edit')
     expect(editButtons).toHaveLength(mockDevices.length)
+  })
+})
+
+describe('DeviceConfig user workflows', () => {
+  const user = userEvent.setup()
+
+  it('click Remove calls devices.remove(), device disappears', async () => {
+    vi.mocked(devices.list).mockResolvedValue({ devices: mockDevices })
+    vi.mocked(devices.remove).mockResolvedValue({ deleted: 'fan-front' })
+    render(<DeviceConfig />)
+
+    await screen.findByText('Front Fan')
+    const removeButtons = screen.getAllByTitle('Remove')
+
+    // After remove, mock list to return without the first device
+    vi.mocked(devices.list).mockResolvedValue({ devices: mockDevices.slice(1) })
+
+    await user.click(removeButtons[0])
+    expect(vi.mocked(devices.remove)).toHaveBeenCalledWith('fan-front')
+
+    // After reload, Front Fan should be gone
+    expect(await screen.findByText('Ceiling Mister')).toBeInTheDocument()
+    expect(screen.queryByText('Front Fan')).not.toBeInTheDocument()
+  })
+
+  it('click Setup Wizard renders wizard component', async () => {
+    vi.mocked(devices.list).mockResolvedValue({ devices: mockDevices })
+    vi.mocked(devices.save).mockResolvedValue({ devices: [] })
+    render(<DeviceConfig />)
+
+    await user.click(await screen.findByText('Setup Wizard'))
+
+    // Wizard first step should appear
+    expect(screen.getByText('Step 1 of 5')).toBeInTheDocument()
+    // Device list should be gone
+    expect(screen.queryByText('Front Fan')).not.toBeInTheDocument()
   })
 })

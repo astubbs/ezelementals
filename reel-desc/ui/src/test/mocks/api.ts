@@ -6,6 +6,7 @@
 import type {
   LibraryRoot,
   LibraryFileEntry,
+  LibraryDirEntry,
   FxEntry,
   TimelineFrameRecord,
   DeviceConfig,
@@ -77,6 +78,30 @@ export const mockSettings: Settings = {
   encoding_defaults: { fps: 0.5, confidence_threshold: 0.7, two_pass: false, stub_llm: false },
   ui: { theme: 'dark', notify_on_complete: true },
 }
+
+export const mockDirEntry: LibraryDirEntry = {
+  type: 'dir',
+  name: 'Action',
+  path: '/media/Action',
+  children: [mockFileEntry, mockFlaggedFileEntry],
+}
+
+export const mockLibraryRootsWithDir: { roots: LibraryRoot[] } = {
+  roots: [{
+    root: '/media',
+    entries: [
+      mockDirEntry,
+      { type: 'file', name: 'new-movie.mkv', path: '/media/new-movie.mkv', bundle_path: null, fx_path: null, timeline_path: null, status: 'not_encoded', flagged_count: 0, title: '', year: 0, imdb_id: '' },
+    ],
+  }],
+}
+
+export const mockMultiFlaggedFxEntries: FxEntry[] = [
+  { t: 0, wind: 0, water: 0, heat_ambient: 0, heat_radiant: 0 },
+  { t: 10, wind: 2, water: 0, heat_ambient: 1, heat_radiant: 0, flagged: true },
+  { t: 20, wind: 3, water: 1, heat_ambient: 0, heat_radiant: 3, flagged: true },
+  { t: 30, wind: 1, water: 0, heat_ambient: 0, heat_radiant: 0 },
+]
 
 export const mockEmptySettings: Settings = {
   media_roots: [],

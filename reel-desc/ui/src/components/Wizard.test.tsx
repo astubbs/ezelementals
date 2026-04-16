@@ -8,6 +8,8 @@ vi.mock('../lib/api', () => ({
   },
 }))
 
+import { devices } from '../lib/api'
+
 describe('Wizard', () => {
   const onDone = vi.fn()
 
@@ -74,5 +76,39 @@ describe('Wizard', () => {
       expect(screen.getByText(new RegExp(titles[i].replace(/[()]/g, '\\$&')))).toBeInTheDocument()
       if (i < titles.length - 1) await user.click(screen.getByText('Next'))
     }
+  })
+})
+
+describe('Wizard user workflows', () => {
+  it('complete walk-through: enable fans, fill fields, finish saves devices', async () => {
+    const onDone = vi.fn()
+    const user = userEvent.setup()
+    render(<Wizard onDone={onDone} />)
+
+    // Step 1: Fans — toggle enable, fill HA entity
+    const toggleBtn = screen.getByText(/I have fans/i).parentElement!.querySelector('button')!
+    await user.click(toggleBtn)
+
+    const entityInput = screen.getByPlaceholderText('input_number.fan_front_left')
+    await user.clear(entityInput)
+    await user.type(entityInput, 'fan.living_room')
+
+    // Navigate through steps 2-4
+    await user.click(screen.getByText('Next'))
+    expect(screen.getByText(/Misters/)).toBeInTheDocument()
+    await user.click(screen.getByText('Next'))
+    expect(screen.getByText(/Radiant Heaters/)).toBeInTheDocument()
+    await user.click(screen.getByText('Next'))
+    expect(screen.getByText(/Ambient Heaters/)).toBeInTheDocument()
+    await user.click(screen.getByText('Next'))
+    expect(screen.getByText(/Proxy Bulbs/)).toBeInTheDocument()
+
+    // Step 5: Click Finish
+    await user.click(screen.getByText('Finish'))
+
+    expect(vi.mocked(devices.save)).toHaveBeenCalledTimes(1)
+    const savedData = vi.mocked(devices.save).mock.calls[0][0]
+    expect(savedData.devices.some((d: { type: string }) => d.type === 'fan')).toBe(true)
+    expect(onDone).toHaveBeenCalled()
   })
 })
