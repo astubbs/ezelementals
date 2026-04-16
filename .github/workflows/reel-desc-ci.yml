@@ -67,6 +67,18 @@ jobs:
       - name: Run tests
         run: uv run pytest tests/ -v --tb=short
 
+      # Upload coverage. `fail_ci_if_error: false` so a Codecov outage
+      # doesn't break our build. Tokenless for public repos; add a
+      # CODECOV_TOKEN secret for more reliable uploads later.
+      - name: Upload coverage to Codecov
+        if: always()
+        uses: codecov/codecov-action@v5
+        with:
+          files: reel-desc/coverage.xml
+          flags: python-${{ matrix.python-version }}
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false
+
   # ── Frontend ──────────────────────────────────────────────────────────
 
   # Shared setup action would be nicer, but three tiny jobs with duplicated
@@ -118,7 +130,18 @@ jobs:
         run: npm ci
 
       - name: Run Vitest
+        # test:run passes --coverage — writes coverage/ alongside the
+        # run. See vitest.config.ts for the coverage config.
         run: npm run test:run
+
+      - name: Upload coverage to Codecov
+        if: always()
+        uses: codecov/codecov-action@v5
+        with:
+          files: reel-desc/ui/coverage/lcov.info
+          flags: frontend
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false
 
   frontend-e2e:
     name: "Frontend E2E (Playwright)"

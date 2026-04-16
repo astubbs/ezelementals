@@ -1,0 +1,58 @@
+# Dependabot config covering every package ecosystem in the repo.
+#
+# Schedule: weekly — standard cadence, keeps PR noise low while still
+# catching CVEs promptly (dependency-review-action in CI catches
+# vulnerable deps at PR time; this is the "rotate everything forward"
+# half of the story).
+#
+# Grouping: minor + patch updates batched into a single PR per week per
+# ecosystem so reviewers aren't drowned. Major updates come as
+# individual PRs so each can be reviewed with attention.
+
+version: 2
+
+updates:
+  # Python (reel-desc) — uv manages the lock; Dependabot understands pip
+  # ecosystem syntax for pyproject.toml dependencies.
+  - package-ecosystem: pip
+    directory: "/reel-desc"
+    schedule:
+      interval: weekly
+    groups:
+      python-minor-patch:
+        update-types: ["minor", "patch"]
+    open-pull-requests-limit: 5
+
+  # Frontend (reel-desc/ui) — npm
+  - package-ecosystem: npm
+    directory: "/reel-desc/ui"
+    schedule:
+      interval: weekly
+    groups:
+      frontend-minor-patch:
+        update-types: ["minor", "patch"]
+    open-pull-requests-limit: 5
+
+  # CI actions used in workflows at .github/workflows/*.yml
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        update-types: ["minor", "patch", "major"]
+
+  # Mobile — Android (Gradle). CI is broken for other reasons, but
+  # security updates should still flow through.
+  - package-ecosystem: gradle
+    directory: "/mobile-apps/alloy-android"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
+
+  # Mobile — iOS (Swift Package Manager)
+  - package-ecosystem: swift
+    directory: "/mobile-apps/alloy-ios"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3

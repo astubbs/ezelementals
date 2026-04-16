@@ -1,1 +1,6 @@
 ignored-notes/
+
+# Coverage artifacts (pytest-cov)
+coverage.xml
+.coverage
+htmlcov/

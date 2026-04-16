@@ -23,6 +23,7 @@ dependencies = [
 dev = [
     "Pillow>=10.0",
     "pytest>=8.0",
+    "pytest-cov>=5",
     "pytest-mock>=3.12",
     "pytest-httpx>=0.30",
     "ruff>=0.4",
@@ -37,7 +38,7 @@ packages = ["src/reeldesc"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-v"
+addopts = "-v --cov=reeldesc --cov-report=term-missing --cov-report=xml"
 
 [tool.ruff]
 line-length = 110
