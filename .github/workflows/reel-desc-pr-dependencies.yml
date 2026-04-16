@@ -1,0 +1,31 @@
+name: PR Dependency Check
+
+# Stacked-PR support: authors declare parent PRs in the body with
+#   depends on #123
+# (or "blocked by #123"). This workflow fails the Check Dependencies
+# status until the declared parent is closed/merged, then auto-re-runs
+# on child PRs when the parent closes so they unblock without manual
+# action.
+#
+# Uses pull_request_target (not pull_request) so the action can read
+# and comment from the target repo's permissions, and fires on
+# `closed` so child PRs get re-checked when their parent merges.
+
+on:
+  pull_request_target:
+    types: [opened, edited, closed, reopened]
+
+permissions:
+  issues: read
+  pull-requests: read
+  checks: write
+
+jobs:
+  check_dependencies:
+    name: Check Dependencies
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: astubbs/dependencies-action@feat/auto-unblock-children-on-merge
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
