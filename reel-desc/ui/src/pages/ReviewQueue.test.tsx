@@ -140,4 +140,21 @@ describe('ReviewQueue user workflows', () => {
     await user.click(screen.getByText(/Accept/))
     expect(screen.getByText('1 remaining')).toBeInTheDocument()
   })
+
+  it('accepting all flagged entries shows "Review complete" screen', async () => {
+    vi.mocked(editor.load).mockResolvedValue({ path: '/test.3fx', entries: JSON.parse(JSON.stringify(mockMultiFlaggedFxEntries)) })
+    vi.mocked(editor.save).mockResolvedValue({ path: '/test.3fx', count: 4 })
+    renderReview('?path=/test.3fx')
+
+    // 2 flagged entries — accept both
+    await screen.findByText('1 / 2')
+    await user.click(screen.getByText(/Accept/))
+    await screen.findByText('2 / 2')
+    await user.click(screen.getByText(/Accept/))
+
+    // After accepting the last one, idx advances past flagged.length and
+    // the completion guard renders
+    expect(await screen.findByText('Review complete')).toBeInTheDocument()
+    expect(screen.getByText('Accepted 2 of 2 flagged frames.')).toBeInTheDocument()
+  })
 })

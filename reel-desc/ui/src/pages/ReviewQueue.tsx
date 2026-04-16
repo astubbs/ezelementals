@@ -60,7 +60,7 @@ export default function ReviewQueue() {
 
   function nextEntry() {
     setEdits({})
-    setIdx(i => Math.min(i + 1, flagged.length - 1))
+    setIdx(i => i + 1)
   }
 
   if (!pathParam) return <div className="p-6 text-slate-400">No file selected.</div>
