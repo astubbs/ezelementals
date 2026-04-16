@@ -61,6 +61,10 @@ export function useEncoderWs(jobId: string | null) {
   }, [])
 
   useEffect(() => {
+    // Reset to empty when jobId clears. The rule below flags sync
+    // setState in an effect because it can cascade renders; here it's
+    // the intended behaviour (reset is the whole point of this branch).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!jobId) { setState(EMPTY); return }
 
     const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws'

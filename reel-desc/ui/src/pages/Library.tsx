@@ -91,7 +91,8 @@ function DirRow({ entry, expanded, setExpanded, navigate }: {
   const open = expanded.has(entry.path)
   function toggle() {
     const next = new Set(expanded)
-    open ? next.delete(entry.path) : next.add(entry.path)
+    if (open) next.delete(entry.path)
+    else next.add(entry.path)
     setExpanded(next)
   }
   return (

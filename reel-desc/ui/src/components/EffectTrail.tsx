@@ -30,20 +30,6 @@ export function EffectTrail({ events, maxEntries = 120, height }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const entriesRef = useRef<TrailEntry[]>([])
 
-  // Collect result events into entries list
-  useEffect(() => {
-    const results = events.filter(e => e.type === 'result')
-    entriesRef.current = results.slice(-maxEntries).map(e => ({
-      wind: (e.wind as number) ?? 0,
-      water: (e.water as number) ?? 0,
-      heat_radiant: (e.heat_radiant as number) ?? 0,
-      heat_ambient: (e.heat_ambient as number) ?? 0,
-      flagged: (e.flagged as boolean) ?? false,
-      timestampS: (e.timestamp_s as number) ?? 0,
-    }))
-    redraw()
-  }, [events])
-
   function redraw() {
     const canvas = canvasRef.current
     if (!canvas) return
@@ -104,6 +90,23 @@ export function EffectTrail({ events, maxEntries = 120, height }: Props) {
       }
     })
   }
+
+  // Collect result events into entries list, then redraw. Function
+  // declarations are hoisted in JS, but keeping the useEffect after
+  // `redraw` makes the dependency obvious to readers and to linters.
+  useEffect(() => {
+    const results = events.filter(e => e.type === 'result')
+    entriesRef.current = results.slice(-maxEntries).map(e => ({
+      wind: (e.wind as number) ?? 0,
+      water: (e.water as number) ?? 0,
+      heat_radiant: (e.heat_radiant as number) ?? 0,
+      heat_ambient: (e.heat_ambient as number) ?? 0,
+      flagged: (e.flagged as boolean) ?? false,
+      timestampS: (e.timestamp_s as number) ?? 0,
+    }))
+    redraw()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- redraw reads refs only
+  }, [events])
 
   const canvasWidth = LABEL_WIDTH + maxEntries * CELL_WIDTH
   const canvasHeight = height ?? CHANNELS.length * ROW_HEIGHT

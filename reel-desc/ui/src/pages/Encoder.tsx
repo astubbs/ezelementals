@@ -93,7 +93,7 @@ export default function Encoder() {
             <XCircle size={14} /> Cancel
           </button>
         ) : (
-          <button onClick={() => navigate(`/editor?path=${encodeURIComponent((state.events.find(e => e.type === 'done') as any)?.output_path ?? '')}`)}
+          <button onClick={() => navigate(`/editor?path=${encodeURIComponent((state.events.find(e => e.type === 'done')?.output_path as string | undefined) ?? '')}`)}
             className="px-4 py-2 bg-green-700 hover:bg-green-600 rounded-lg text-sm font-medium">
             Open in Editor
           </button>
@@ -204,7 +204,7 @@ export default function Encoder() {
               </div>
               {state.done && (
                 <div className="mt-2 text-xs text-green-400">
-                  ✓ Done — {(state.events.find(e => e.type === 'done') as any)?.flagged_count ?? 0} flagged frames
+                  ✓ Done — {(state.events.find(e => e.type === 'done')?.flagged_count as number | undefined) ?? 0} flagged frames
                 </div>
               )}
               {state.error && <div className="mt-2 text-xs text-red-400">⚠ {state.error}</div>}

@@ -85,7 +85,7 @@ export default function Player() {
           <div className="flex gap-6">
             {(['wind', 'water', 'heat_radiant', 'heat_ambient'] as const).map(ch => (
               <div key={ch} className="flex flex-col items-center gap-1">
-                <span className="text-lg font-mono text-slate-200">{(currentFx as any)[ch]}</span>
+                <span className="text-lg font-mono text-slate-200">{(currentFx as unknown as Record<string, number>)[ch]}</span>
                 <span className="text-xs text-slate-500">{ch.replace('_', ' ')}</span>
               </div>
             ))}

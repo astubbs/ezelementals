@@ -1,25 +1,48 @@
 name: ReelDesc CI
 
+# Jobs run in parallel. Each one is small and focused so a failure points
+# straight at the layer that broke. Pattern borrowed from
+# astubbs/parallel-consumer dev/ci-tweak.
+#
+# PR strategy: fail fast. If lint/typecheck is red, Playwright is wasted
+# effort, so run them in parallel and let the PR author see the first
+# failure quickly.
+
 on:
   push:
-    branches: [spike, main]
+    branches: [main, develop, spike]
     paths:
       - "reel-desc/**"
-      - ".github/workflows/ci.yml"
+      - ".github/workflows/reel-desc-ci.yml"
   pull_request:
-    branches: [spike, main]
+    branches: [main, develop]
     paths:
       - "reel-desc/**"
-      - ".github/workflows/ci.yml"
+      - ".github/workflows/reel-desc-ci.yml"
+
+permissions:
+  contents: read
+
+# Cancel older runs of the same branch/PR when a new push lands — no point
+# burning CI time on a commit that's already superseded.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
 
 defaults:
   run:
     working-directory: reel-desc
 
 jobs:
-  test:
+
+  # ── Backend ───────────────────────────────────────────────────────────
+
+  python-tests:
+    name: "Python tests (py${{ matrix.python-version }})"
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     strategy:
+      fail-fast: false
       matrix:
         python-version: ["3.11", "3.12"]
 
@@ -43,3 +66,124 @@ jobs:
 
       - name: Run tests
         run: uv run pytest tests/ -v --tb=short
+
+  # ── Frontend ──────────────────────────────────────────────────────────
+
+  # Shared setup action would be nicer, but three tiny jobs with duplicated
+  # checkout + node setup is the simplest thing that works and keeps each
+  # job independently re-runnable. Revisit if this grows.
+
+  frontend-lint:
+    name: "Frontend lint + typecheck"
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: reel-desc/ui
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: reel-desc/ui/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: ESLint
+        run: npm run lint
+
+      - name: TypeScript build (typecheck only)
+        # `npm run build` runs tsc -b + vite build; we only need the
+        # typecheck here. If this becomes a bottleneck, split tsc out.
+        run: npx tsc -b
+
+  frontend-unit:
+    name: "Frontend unit tests (Vitest)"
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: reel-desc/ui
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: reel-desc/ui/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Vitest
+        run: npm run test:run
+
+  frontend-e2e:
+    name: "Frontend E2E (Playwright)"
+    runs-on: ubuntu-latest
+    # Generous timeout: Playwright needs to build the frontend, boot
+    # FastAPI, install deps on first run. Tighten once we have a cache hit
+    # baseline and enough history to know the p99 runtime.
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: reel-desc/ui
+    steps:
+      - uses: actions/checkout@v4
+
+      # Both stacks: Playwright needs Node + npm, the webServer under test
+      # is uv + Python (runs reel-desc/bin/ui.sh which calls uv run
+      # reeldesc-ui).
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: reel-desc/ui/package-lock.json
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          working-directory: reel-desc
+
+      - name: Set up Python
+        run: uv python install 3.12
+        working-directory: reel-desc
+
+      - name: Install Python dependencies
+        run: uv sync --extra dev
+        working-directory: reel-desc
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      # Cache Playwright's browser download keyed on the Playwright version
+      # in the lockfile. Without this, every run re-downloads ~200MB of
+      # Chromium.
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('reel-desc/ui/package-lock.json') }}
+
+      - name: Install Playwright browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+
+      - name: Run E2E tests
+        env:
+          CI: "true"
+        run: npm run e2e
+
+      # Retain the HTML report + traces on failure so a failing run can be
+      # debugged without re-running CI locally.
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: reel-desc/ui/playwright-report/
+          retention-days: 14
