@@ -27,6 +27,16 @@ guidance is at the bottom.
 - When you fix something or finish implementing something, record lessons
   learnt (in a diary entry or the relevant spec).
 
+## PR discipline
+
+- **After opening a PR, follow up on the duplication reports.** The
+  `Duplicate Code Check` and `File Similarity Check` workflows post PR
+  comments flagging new clones and similarity warnings (see
+  `.github/workflows/reel-desc-ci.yml`). Read them, identify duplication
+  introduced by *this* PR, and refactor to remove it before the PR merges.
+  Ignore clones that already existed on the base branch — they're out of
+  scope for the current PR.
+
 ## Development discipline
 
 - **Skateboard first.** Build the simplest end-to-end thing that works, then

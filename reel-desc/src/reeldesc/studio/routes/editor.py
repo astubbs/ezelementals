@@ -10,17 +10,9 @@ from typing import Any
 
 from fastapi import APIRouter, Body, HTTPException, Query
 
+from reeldesc.studio._track_loader import load_fx
+
 router = APIRouter(prefix="/api/editor", tags=["editor"])
-
-
-def _read_fx(path: Path) -> list[dict[str, Any]]:
-    entries = []
-    with path.open() as f:
-        for line in f:
-            line = line.strip()
-            if line:
-                entries.append(json.loads(line))
-    return sorted(entries, key=lambda e: e["t"])
 
 
 def _write_fx(path: Path, entries: list[dict[str, Any]]) -> None:
@@ -37,7 +29,7 @@ def get_track(path: str = Query(...)) -> dict:
     if not p.exists():
         raise HTTPException(status_code=404, detail="File not found")
     try:
-        entries = _read_fx(p)
+        entries = load_fx(p)
     except (json.JSONDecodeError, OSError) as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     return {"path": path, "entries": entries}
@@ -63,7 +55,7 @@ def patch_entry(
     p = Path(path)
     if not p.exists():
         raise HTTPException(status_code=404, detail="File not found")
-    entries = _read_fx(p)
+    entries = load_fx(p)
     for i, entry in enumerate(entries):
         if abs(entry["t"] - t) < 0.001:
             entries[i] = {**entry, **update, "t": entry["t"]}
@@ -78,7 +70,7 @@ def add_entry(path: str = Query(...), entry: dict = Body(...)) -> dict:
     p = Path(path)
     if not p.exists():
         raise HTTPException(status_code=404, detail="File not found")
-    entries = _read_fx(p)
+    entries = load_fx(p)
     entries.append(entry)
     _write_fx(p, entries)
     return {"added": entry}
@@ -93,7 +85,7 @@ def delete_entry(
     p = Path(path)
     if not p.exists():
         raise HTTPException(status_code=404, detail="File not found")
-    entries = _read_fx(p)
+    entries = load_fx(p)
     before = len(entries)
     entries = [e for e in entries if abs(e["t"] - t) >= 0.001]
     if len(entries) == before:

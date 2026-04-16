@@ -8,7 +8,6 @@ endpoint at ~2 Hz during playback.
 
 from __future__ import annotations
 
-import json
 from bisect import bisect_right
 from pathlib import Path
 from typing import Any
@@ -16,19 +15,10 @@ from typing import Any
 import httpx
 from fastapi import APIRouter, HTTPException, Query
 
+from reeldesc.studio._track_loader import load_fx
 from reeldesc.studio.config import load_settings
 
 router = APIRouter(prefix="/api/player", tags=["player"])
-
-
-def _load_fx(path: Path) -> list[dict[str, Any]]:
-    entries = []
-    with path.open() as f:
-        for line in f:
-            line = line.strip()
-            if line:
-                entries.append(json.loads(line))
-    return sorted(entries, key=lambda e: e["t"])
 
 
 def _current_fx(entries: list[dict[str, Any]], position_s: float) -> dict[str, Any] | None:
@@ -110,7 +100,7 @@ def _resolve_playback_data(
         p = Path(fx_path)
         if p.exists():
             try:
-                entries = _load_fx(p)
+                entries = load_fx(p)
                 return _current_fx(entries, position_s)
             except Exception:
                 pass
