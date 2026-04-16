@@ -31,6 +31,12 @@ jobs:
           distribution: temurin
           java-version: "17"
 
+      # Ensure Android SDK + cmdline-tools are on the runner. ubuntu-latest
+      # ships an SDK but this makes license acceptance and component
+      # installation explicit, so builds don't fail on first-run prompts.
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v3
 
