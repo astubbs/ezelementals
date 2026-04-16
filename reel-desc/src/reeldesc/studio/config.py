@@ -1,15 +1,26 @@
 """
 Configuration manager — reads/writes ~/.config/reeldesc/{settings,devices}.json.
 All settings have safe defaults so the app starts cleanly on first run.
+
+Honour REELDESC_CONFIG_DIR env var for isolation in tests and CI. When
+the env var is set, config files are read from and written to that
+directory instead of the user's home. Resolved at module import time;
+the app process reads it once at startup.
 """
 
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Any
 
-CONFIG_DIR = Path.home() / ".config" / "reeldesc"
+_CONFIG_DIR_OVERRIDE = os.environ.get("REELDESC_CONFIG_DIR")
+CONFIG_DIR = (
+    Path(_CONFIG_DIR_OVERRIDE)
+    if _CONFIG_DIR_OVERRIDE
+    else Path.home() / ".config" / "reeldesc"
+)
 SETTINGS_PATH = CONFIG_DIR / "settings.json"
 DEVICES_PATH = CONFIG_DIR / "devices.json"
 
