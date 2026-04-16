@@ -210,11 +210,20 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           # src only — excludes tests (natural mock/setup duplication) and
-          # built artifacts (studio/static/). PMD CPD handles Python; jscpd
-          # handles TypeScript.
+          # built artifacts (studio/static/). PMD CPD scans Python; jscpd
+          # scans TypeScript. Default file-pattern is **/*.java so
+          # overriding both is mandatory for this repo.
           directories: 'reel-desc/src reel-desc/ui/src'
-          cpd-max-duplication: '5'
-          jscpd-max-duplication: '4'
+          cpd-language: 'python'
+          jscpd-file-pattern: '**/*.{ts,tsx}'
+          # Baseline is ~zero duplication. Lock it in with a tight ceiling
+          # and a zero-tolerance ratchet on PRs — new PRs can't increase
+          # duplication more than 0.1% vs base. Bump if this becomes a
+          # nuisance, but default is "stay clean".
+          cpd-max-duplication: '2'
+          cpd-max-increase: '0.1'
+          jscpd-max-duplication: '2'
+          jscpd-max-increase: '0.1'
 
   # Whole-file similarity — catches copy-pasted pages/modules that line-level
   # CPD misses. Posts a single comment per PR, comparing against base.
