@@ -70,9 +70,9 @@ class EncodeJob:
         """Blocking work — runs in a thread pool."""
         import tempfile
 
-        from reeldesc.runner import ClassifyConfig, classify_frame
         from reeldesc.exporters.threefx import write_3fx
         from reeldesc.extractor import FrameSample, extract_frames, extract_spectrograms
+        from reeldesc.runner import ClassifyConfig, classify_frame
 
         params = self.params
         video_path = Path(params["video_path"])
@@ -258,10 +258,11 @@ class EncodeJob:
             return
 
         # ── Compress + write .3fx ────────────────────────────────────────────
+        import datetime
+
+        from reeldesc.bundle import BundleMeta, create_bundle
         from reeldesc.exporters.threefx import compress_results
         from reeldesc.timeline import Timeline
-        from reeldesc.bundle import BundleMeta, create_bundle
-        import datetime
 
         log.info("[%s] Classification complete. Compressing %d results…", self.job_id, len(results))
         self._emit({"type": "status", "message": "Compressing and writing bundle…", "phase": "compressing"})

@@ -5,7 +5,6 @@ Editor routes — read, patch, and write .3fx tracks and timeline.jsonl bundles.
 from __future__ import annotations
 
 import json
-from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 

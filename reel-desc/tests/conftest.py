@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from reeldesc.runner import ClassifyConfig
 from reeldesc.extractor import FrameSample
+from reeldesc.runner import ClassifyConfig
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 

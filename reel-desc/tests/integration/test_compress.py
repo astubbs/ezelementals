@@ -2,7 +2,6 @@
 
 import json
 
-from reeldesc.timeline import TimelineFrame
 from reeldesc.exporters.threefx import (
     FxEntry,
     compress_results,
@@ -10,6 +9,7 @@ from reeldesc.exporters.threefx import (
     read_3fx,
     write_3fx,
 )
+from reeldesc.timeline import TimelineFrame
 
 
 def make_result(frame_index, timestamp_s, wind=0, water=0, heat_ambient=0, heat_radiant=0, flagged=False):
