@@ -46,16 +46,21 @@ jobs:
       - name: Unit tests
         run: ./gradlew :app:testDebugUnitTest --stacktrace
 
-  # Compose UI / instrumentation tests on a real emulator. Slower
-  # (~5 min cold, ~2 min warm with cache), but exercises the actual
-  # Android runtime. Runs on macos-latest because nested virtualization
-  # works reliably there; ubuntu needs KVM which is slower to set up.
+  # Compose UI / instrumentation tests on a real emulator via KVM on
+  # ubuntu-latest (GitHub's recommended setup for reliable emulator
+  # boot). Uses x86_64 arch since ubuntu runners are x86.
   instrumentation:
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     needs: static-and-unit
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -73,16 +78,15 @@ jobs:
           path: |
             ~/.android/avd/*
             ~/.android/adb*
-          key: avd-api-34-arm64
+          key: avd-api-34-x86_64
 
       - name: Create AVD + warm snapshot (first run only)
         if: steps.avd-cache.outputs.cache-hit != 'true'
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 34
-          arch: arm64-v8a
+          arch: x86_64
           target: google_apis
-          profile: pixel_7
           force-avd-creation: false
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: false
@@ -93,9 +97,8 @@ jobs:
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 34
-          arch: arm64-v8a
+          arch: x86_64
           target: google_apis
-          profile: pixel_7
           force-avd-creation: false
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
