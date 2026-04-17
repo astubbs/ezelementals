@@ -67,6 +67,11 @@ export function useVolumeTarget(
       targetRef.current = null;
       throttleRef.current = null;
     };
+    // Keying on the descriptor's primitive fields avoids rebuilding
+    // the target on every render when only the outer object identity
+    // changes. The `descriptor` object itself is intentionally not
+    // in the dep list.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [descriptor.entityId, descriptor.haBaseURL, token]);
 
   const onDragStart = useCallback(() => {

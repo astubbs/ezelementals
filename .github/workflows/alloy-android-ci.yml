@@ -108,6 +108,9 @@ jobs:
     if: always()
     needs: [static-and-unit, instrumentation]
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .
     steps:
       - name: Aggregate result
         run: |

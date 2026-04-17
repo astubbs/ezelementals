@@ -30,6 +30,8 @@ export default function VolumeScreen() {
     if (settings.loaded && !settings.boundTarget) {
       router.replace('/onboarding/welcome');
     }
+    // `router` is a stable reference from expo-router.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings.loaded, settings.boundTarget]);
 
   if (!settings.boundTarget || !token) {

@@ -21,6 +21,7 @@ const KEYS = {
 // Lazy-load expo-secure-store only on native to avoid web crashes.
 let SecureStore: typeof import('expo-secure-store') | null = null;
 if (Platform.OS !== 'web') {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   SecureStore = require('expo-secure-store');
 }
 

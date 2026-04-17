@@ -4,13 +4,12 @@
  * tap through to the target picker once results are available.
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View, FlatList } from 'react-native';
 import { useRouter } from 'expo-router';
 import { AvrRow } from '../../src/components/AvrRow';
 import { useDiscovery } from '../../src/hooks/useDiscovery';
 import { useSettings } from '../../src/hooks/useSettings';
-import { storage } from '../../src/lib/storage';
 import type { HAConfig } from '../../src/lib/ha-client';
 
 export default function DiscoveryScreen() {
@@ -27,6 +26,9 @@ export default function DiscoveryScreen() {
         await discover(config);
       }
     })();
+    // Only run discovery once on mount. `discover` and `settings`
+    // are stable references from custom hooks.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (

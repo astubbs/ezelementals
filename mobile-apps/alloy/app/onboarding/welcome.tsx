@@ -8,7 +8,7 @@ export default function WelcomeScreen() {
     <View style={styles.container}>
       <View style={styles.spacer} />
       <Text style={styles.title}>Alloy</Text>
-      <Text style={styles.subtitle}>Let's find your AV receiver.</Text>
+      <Text style={styles.subtitle}>Let&apos;s find your AV receiver.</Text>
       <View style={styles.spacer} />
       <Pressable
         onPress={() => router.push('/onboarding/ha-connect')}

@@ -27,9 +27,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Select Xcode
-        run: sudo xcode-select -s /Applications/Xcode_15.4.app
-
       - name: Install XcodeGen
         run: brew install xcodegen
 
@@ -54,6 +51,9 @@ jobs:
     if: always()
     needs: [test]
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .
     steps:
       - name: Aggregate result
         run: |

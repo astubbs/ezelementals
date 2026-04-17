@@ -25,7 +25,8 @@ export default function RootLayout() {
 
   // If no target is bound, show the onboarding wizard.
   // Otherwise, show the main tabs (volume + settings).
-  const initialRoute = settings.boundTarget ? '(tabs)' : 'onboarding';
+  // Routing between the two is handled in (tabs)/index.tsx via
+  // router.replace to /onboarding/welcome.
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>

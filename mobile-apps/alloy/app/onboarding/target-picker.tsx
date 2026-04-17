@@ -25,6 +25,8 @@ export default function TargetPickerScreen() {
         await discover(config);
       }
     })();
+    // Only run discovery once on mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (

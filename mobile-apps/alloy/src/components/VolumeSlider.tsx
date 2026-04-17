@@ -14,7 +14,6 @@
 
 import { useCallback, useRef, useState } from 'react';
 import {
-  Animated,
   type LayoutChangeEvent,
   PanResponder,
   StyleSheet,

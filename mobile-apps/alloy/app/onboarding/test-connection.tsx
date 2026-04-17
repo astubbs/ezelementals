@@ -8,7 +8,6 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSettings } from '../../src/hooks/useSettings';
-import { storage } from '../../src/lib/storage';
 import * as ha from '../../src/lib/ha-client';
 import type { VolumeTargetDescriptor } from '../../src/types';
 
@@ -44,6 +43,8 @@ export default function TestConnectionScreen() {
         setError(String(e));
       }
     })();
+    // `settings` is a stable reference from a custom hook.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entityId]);
 
   const handleConfirm = async () => {
