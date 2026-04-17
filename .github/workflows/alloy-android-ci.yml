@@ -1,0 +1,47 @@
+name: alloy-android CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "mobile-apps/alloy-android/**"
+      - "mobile-apps/specs/**"
+      - ".github/workflows/alloy-android-ci.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "mobile-apps/alloy-android/**"
+      - "mobile-apps/specs/**"
+      - ".github/workflows/alloy-android-ci.yml"
+
+defaults:
+  run:
+    working-directory: mobile-apps/alloy-android
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      # Ensure Android SDK + cmdline-tools are on the runner. ubuntu-latest
+      # ships an SDK but this makes license acceptance and component
+      # installation explicit, so builds don't fail on first-run prompts.
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Unit tests
+        run: ./gradlew :app:testDebugUnitTest --stacktrace
+
+      - name: Lint
+        run: ./gradlew :app:lintDebug --stacktrace

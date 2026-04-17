@@ -1,0 +1,216 @@
+"""Top-level pipeline orchestrator."""
+
+from __future__ import annotations
+
+import argparse
+import contextlib
+import logging
+import sys
+import tempfile
+import time
+from dataclasses import dataclass, field
+from pathlib import Path
+
+from reeldesc.bundle import BundleMeta, create_bundle
+from reeldesc.exporters.threefx import FxEntry, compress_results, compression_stats, write_3fx
+from reeldesc.extractor import extract_frames, extract_spectrograms
+from reeldesc.runner import ClassifyConfig, classify_batch
+from reeldesc.timeline import Timeline, TimelineFrame
+
+logger = logging.getLogger(__name__)
+
+
+@dataclass
+class PipelineConfig:
+    video_path: Path
+    output_path: Path
+    frames_dir: Path | None = None
+    fps: float = 0.5
+    classify_config: ClassifyConfig = field(default_factory=ClassifyConfig)
+    include_flagged_in_output: bool = True
+    exports: list[str] = field(default_factory=lambda: ["elemental"])
+
+
+@dataclass
+class PipelineResult:
+    fx_entries: list[FxEntry]
+    timeline: Timeline
+    stats: dict
+    output_path: Path
+    bundle_path: Path | None = None
+
+
+def run_pipeline(config: PipelineConfig) -> PipelineResult:
+    """Run the full extract → classify → compress → write pipeline."""
+    config.video_path = Path(config.video_path)
+    config.output_path = Path(config.output_path)
+
+    # If the path doesn't exist, try looking in common locations like Downloads
+    if not config.video_path.exists():
+        downloads_path = Path.home() / "Downloads" / config.video_path.name
+        if downloads_path.exists():
+            config.video_path = downloads_path
+        else:
+            raise FileNotFoundError(f"Video not found: {config.video_path}")
+
+    t_total = time.monotonic()
+
+    with contextlib.ExitStack() as stack:
+        if config.frames_dir:
+            frames_dir = Path(config.frames_dir)
+            frames_dir.mkdir(parents=True, exist_ok=True)
+        else:
+            frames_dir = Path(stack.enter_context(tempfile.TemporaryDirectory()))
+
+        logger.info("Extracting frames from %s at %.2f fps", config.video_path, config.fps)
+        t0 = time.monotonic()
+        samples = extract_frames(config.video_path, frames_dir, config.fps)
+        samples = extract_spectrograms(config.video_path, frames_dir, samples)
+        t_extract = time.monotonic() - t0
+        logger.info("Extracted %d frames in %.1fs", len(samples), t_extract)
+
+        logger.info("Classifying %d samples", len(samples))
+        t0 = time.monotonic()
+        frames: list[TimelineFrame] = classify_batch(
+            samples,
+            config.classify_config,
+            on_progress=lambda i, n: logger.info("  %d/%d", i, n),
+        )
+        t_classify = time.monotonic() - t0
+        timeline = Timeline(frames)
+
+        t0 = time.monotonic()
+        entries = compress_results(frames, include_flagged=config.include_flagged_in_output)
+        stats = compression_stats(frames, entries)
+        t_compress = time.monotonic() - t0
+        logger.info(
+            "Compressed %d frames → %d entries (ratio %.1fx, %d flagged)",
+            stats["input_frames"],
+            stats["output_entries"],
+            stats["compression_ratio"],
+            stats["flagged_count"],
+        )
+
+        # Write bare .3fx for backwards compatibility
+        config.output_path.parent.mkdir(parents=True, exist_ok=True)
+        write_3fx(entries, config.output_path)
+        logger.info("Wrote %s", config.output_path)
+
+        # Create bundle alongside the .3fx file
+        bundle_path = None
+        bundle_dir = config.output_path.with_suffix(".bundle")
+        export_files: dict[str, Path] = {}
+        if "elemental" in config.exports:
+            export_files["elemental.3fx"] = config.output_path
+
+        meta = BundleMeta(
+            title=config.video_path.stem,
+            generator_version="0.1.0",
+            fps=config.fps,
+            model=config.classify_config.model if not config.classify_config.stub else "stub",
+        )
+        bundle_path = create_bundle(bundle_dir, meta, timeline, exports=export_files)
+        logger.info("Created bundle %s", bundle_path)
+
+        stats["timings"] = {
+            "extract_s": t_extract,
+            "classify_s": t_classify,
+            "compress_s": t_compress,
+            "total_s": time.monotonic() - t_total,
+        }
+
+        return PipelineResult(
+            fx_entries=entries,
+            timeline=timeline,
+            stats=stats,
+            output_path=config.output_path,
+            bundle_path=bundle_path,
+        )
+
+
+def _print_banner(config: PipelineConfig) -> None:
+    cc = config.classify_config
+    lines = [
+        "",
+        "┌─────────────────────────────────────────────┐",
+        "│             ReelDesc  ·  M0 spike            │",
+        "└─────────────────────────────────────────────┘",
+        f"  input          {config.video_path}",
+        f"  output         {config.output_path}",
+        f"  frames dir     {config.frames_dir or '(temp)'}",
+        "",
+        "  ── classifier ─────────────────────────────",
+        f"  backend        {'Stub (random, no LLM)' if cc.stub else 'Ollama'}",
+        f"  model          {cc.model}" if not cc.stub else "  model          —",
+        f"  endpoint       {cc.ollama_base_url}" if not cc.stub else "  endpoint       —",
+        f"  confidence ≥   {cc.confidence_threshold}",
+        "",
+        "  ── extraction ─────────────────────────────",
+        f"  sample rate    {config.fps} fps  (1 frame every {1/config.fps:.0f}s)",
+        f"  flagged frames {'included' if config.include_flagged_in_output else 'excluded'} in output",
+        "",
+    ]
+    print("\n".join(lines), flush=True)
+
+
+def run_pipeline_cli() -> None:
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s  %(message)s", datefmt="%H:%M:%S")
+
+    parser = argparse.ArgumentParser(
+        description="Generate a .3fx effect track from a video file."
+    )
+    parser.add_argument("video", type=Path, help="Input video file")
+    parser.add_argument("output", type=Path, nargs="?", help="Output .3fx file (default: <video>.3fx)")
+    parser.add_argument("--fps", type=float, default=0.5, help="Frames per second to extract (default: 0.5)")
+    parser.add_argument("--ollama-url", default="http://localhost:11434")
+    parser.add_argument("--model", default="qwen2.5vl:7b")
+    parser.add_argument("--confidence-threshold", type=float, default=0.7)
+    parser.add_argument("--frames-dir", type=Path, default=None)
+    parser.add_argument("--stub-llm", action="store_true", help="Use random stub instead of Ollama")
+    parser.add_argument(
+        "--export", action="append", default=None,
+        choices=["elemental", "all"],
+        help="Export formats to generate (default: elemental). Can be repeated.",
+    )
+    args = parser.parse_args()
+
+    if not args.video.exists():
+        print(f"error: video not found: {args.video}", file=sys.stderr)
+        sys.exit(1)
+
+    output = args.output or args.video.with_suffix(".3fx")
+    exports = args.export or ["elemental"]
+    if "all" in exports:
+        exports = ["elemental"]  # expand as more exporters are added
+
+    config = PipelineConfig(
+        video_path=args.video,
+        output_path=output,
+        frames_dir=args.frames_dir,
+        fps=args.fps,
+        exports=exports,
+        classify_config=ClassifyConfig(
+            ollama_base_url=args.ollama_url,
+            model=args.model,
+            confidence_threshold=args.confidence_threshold,
+            stub=args.stub_llm,
+        ),
+    )
+
+    _print_banner(config)
+    try:
+        result = run_pipeline(config)
+    except (FileNotFoundError, RuntimeError) as exc:
+        print(f"\n  error: {exc}", file=sys.stderr)
+        sys.exit(1)
+    t = result.stats["timings"]
+    classify_fps = result.stats["input_frames"] / t["classify_s"] if t["classify_s"] > 0 else 0
+    print(
+        f"\n  ✓ done — {result.stats['output_entries']} entries "
+        f"({result.stats['compression_ratio']:.1f}x compression, "
+        f"{result.stats['flagged_count']} flagged)\n"
+        f"    extract {t['extract_s']:.1f}s"
+        f"   classify {t['classify_s']:.1f}s ({classify_fps:.2f} fps)"
+        f"   compress {t['compress_s']:.1f}s"
+        f"   total {t['total_s']:.1f}s\n"
+    )
