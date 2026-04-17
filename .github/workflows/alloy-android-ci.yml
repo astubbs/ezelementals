@@ -2,24 +2,27 @@ name: alloy-android CI
 
 on:
   push:
-    branches: [main]
     paths:
       - "mobile-apps/alloy-android/**"
       - "mobile-apps/specs/**"
       - ".github/workflows/alloy-android-ci.yml"
   pull_request:
-    branches: [main]
     paths:
       - "mobile-apps/alloy-android/**"
       - "mobile-apps/specs/**"
       - ".github/workflows/alloy-android-ci.yml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 defaults:
   run:
     working-directory: mobile-apps/alloy-android
 
 jobs:
-  test:
+  # Static + fast dynamic checks. Cheap, runs on every push.
+  static-and-unit:
     runs-on: ubuntu-latest
 
     steps:
@@ -34,8 +37,86 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v3
 
+      - name: Lint
+        run: ./gradlew :app:lintDebug --stacktrace
+
+      - name: Compile debug
+        run: ./gradlew :app:assembleDebug --stacktrace
+
       - name: Unit tests
         run: ./gradlew :app:testDebugUnitTest --stacktrace
 
-      - name: Lint
-        run: ./gradlew :app:lintDebug --stacktrace
+  # Compose UI / instrumentation tests on a real emulator. Slower
+  # (~5 min cold, ~2 min warm with cache), but exercises the actual
+  # Android runtime. Runs on macos-latest because nested virtualization
+  # works reliably there; ubuntu needs KVM which is slower to set up.
+  instrumentation:
+    runs-on: macos-latest
+    needs: static-and-unit
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: AVD cache
+        uses: actions/cache@v4
+        id: avd-cache
+        with:
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: avd-api-34-arm64
+
+      - name: Create AVD + warm snapshot (first run only)
+        if: steps.avd-cache.outputs.cache-hit != 'true'
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: arm64-v8a
+          target: google_apis
+          profile: pixel_7
+          force-avd-creation: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: false
+          working-directory: mobile-apps/alloy-android
+          script: echo "Generated AVD snapshot for caching."
+
+      - name: Run instrumentation tests
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: arm64-v8a
+          target: google_apis
+          profile: pixel_7
+          force-avd-creation: false
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          working-directory: mobile-apps/alloy-android
+          script: ./gradlew :app:connectedDebugAndroidTest --stacktrace
+
+  # Aggregator for branch protection. See alloy-ios-ci.yml for
+  # the rationale on why this pattern is necessary.
+  ci-status:
+    if: always()
+    needs: [static-and-unit, instrumentation]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Aggregate result
+        run: |
+          for name in static-and-unit instrumentation; do
+            result="${{ needs.static-and-unit.result }}"
+            if [ "$name" = "instrumentation" ]; then result="${{ needs.instrumentation.result }}"; fi
+            if [ "$result" != "success" ] && [ "$result" != "skipped" ]; then
+              echo "$name job result: $result"
+              exit 1
+            fi
+          done
+          echo "alloy-android CI: ok"

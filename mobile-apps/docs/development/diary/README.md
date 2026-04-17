@@ -48,3 +48,8 @@ covers it, a diary entry is probably overkill.
   ImageRenderer-based unit snapshot tests, and XCUITest screenshot
   assertions. Why accessibility-tree queries weren't catching
   blank-screen rendering bugs.
+- [`2026-04-17-expo-pivot.md`](2026-04-17-expo-pivot.md) —
+  Added Expo as a third parallel implementation alongside the
+  native Swift and Kotlin apps. Hardware-feel comparison to
+  follow; Jest coverage on the pure-logic modules; Android
+  instrumentation tests now running in CI.

@@ -2,17 +2,19 @@ name: alloy-ios CI
 
 on:
   push:
-    branches: [main]
     paths:
       - "mobile-apps/alloy-ios/**"
       - "mobile-apps/specs/**"
       - ".github/workflows/alloy-ios-ci.yml"
   pull_request:
-    branches: [main]
     paths:
       - "mobile-apps/alloy-ios/**"
       - "mobile-apps/specs/**"
       - ".github/workflows/alloy-ios-ci.yml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 defaults:
   run:
@@ -43,3 +45,20 @@ jobs:
             -destination 'platform=iOS Simulator,name=iPhone 15,OS=latest' \
             CODE_SIGNING_ALLOWED=NO \
             | xcpretty
+
+  # Aggregator for branch protection. Always runs when this
+  # workflow triggers. If path filter excludes the PR, this
+  # workflow doesn't run at all — which is the desired behaviour
+  # for monorepo required checks.
+  ci-status:
+    if: always()
+    needs: [test]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Aggregate result
+        run: |
+          if [ "${{ needs.test.result }}" != "success" ]; then
+            echo "test job result: ${{ needs.test.result }}"
+            exit 1
+          fi
+          echo "alloy-ios CI: ok"

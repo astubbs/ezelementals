@@ -1,0 +1,67 @@
+name: alloy (Expo) CI
+
+on:
+  push:
+    paths:
+      - "mobile-apps/alloy/**"
+      - "mobile-apps/specs/**"
+      - ".github/workflows/alloy-ci.yml"
+  pull_request:
+    paths:
+      - "mobile-apps/alloy/**"
+      - "mobile-apps/specs/**"
+      - ".github/workflows/alloy-ci.yml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: mobile-apps/alloy
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: mobile-apps/alloy/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Static checks
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Lint
+        run: npx expo lint
+
+      - name: Build web bundle
+        run: npx expo export --platform web
+
+      # Dynamic checks
+      - name: Unit tests
+        run: npx jest --ci
+
+  # Aggregator for branch protection. See alloy-ios-ci.yml for
+  # the rationale on why this pattern is necessary.
+  ci-status:
+    if: always()
+    needs: [test]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Aggregate result
+        run: |
+          if [ "${{ needs.test.result }}" != "success" ]; then
+            echo "test job result: ${{ needs.test.result }}"
+            exit 1
+          fi
+          echo "alloy (Expo) CI: ok"

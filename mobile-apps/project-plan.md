@@ -47,23 +47,34 @@ great volume knob. If a control isn't at that level, it isn't done.
   Store receipts, so no client-embedded keys or secrets are required.
   Apps like Signal, Bitwarden, and Standard Notes ship the same way.
 
-## The two apps
+## The three implementations
 
-| Directory | Stack | Notes |
-| --- | --- | --- |
-| `alloy-ios/` | Swift, likely SwiftUI | iOS first |
-| `alloy-android/` | Kotlin, likely Jetpack Compose | Shipped at parity |
+Three parallel apps live under `mobile-apps/`. All three implement
+the same specs; the user is evaluating which *feels* best on real
+hardware before any deprecation.
 
-**Codebase strategy.** The bet is that two fully native codebases plus a
-shared feature spec, kept in sync by modern AI agent coding, can give
-most of the DRY benefit of a shared framework without sacrificing native
-polish. Features get authored once in the spec and cross-transpiled into
-each codebase.
+| Directory | Stack | Platforms | Notes |
+| --- | --- | --- | --- |
+| `alloy-ios/` | Swift, SwiftUI | iOS | Native polish baseline |
+| `alloy-android/` | Kotlin, Jetpack Compose | Android | Native polish baseline |
+| `alloy/` | Expo SDK 54 (React Native + Expo Web), TypeScript | web + iOS + Android | Added for iteration velocity; one codebase, three platforms |
 
-**Fallback.** If maintaining two natives in lockstep becomes unmanageable,
-the documented escape hatch is to transpile the winning codebase into
-**Flutter** and continue from there. Flutter is the safety net, not the
-default.
+**Codebase strategy.** Build the same feature three times. Native
+Swift and Kotlin give the highest polish ceiling; Expo gives the
+highest iteration velocity and makes the feature available on the
+web (and, via Expo's native builds, on iOS and Android as well).
+Specs in `mobile-apps/specs/` are the source of truth for all three.
+
+**Why keep three.** A cross-platform framework like Expo closes most
+of the native polish gap, but the volume-knob polish bar is high
+enough that a measurable hand-feel difference could still matter.
+Until the user has spent time with each, none of them is retired.
+When the comparison data points at one, the losers get archived — not
+before.
+
+**Fallback.** If the user decides one or both native codebases are
+not pulling their weight against the Expo version, they get archived
+(kept as reference) and development concentrates on the survivor.
 
 ## UX principles
 
