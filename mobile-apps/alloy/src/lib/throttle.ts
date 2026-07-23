@@ -13,6 +13,7 @@ export class Throttle {
   private timer: ReturnType<typeof setTimeout> | null = null;
   private pending: number | null = null;
   private send: (value: number) => void;
+  private disposed = false;
 
   constructor(send: (value: number) => void, intervalMs = 100) {
     this.send = send;
@@ -21,11 +22,12 @@ export class Throttle {
 
   /** Call on each drag change. Coalesces rapid updates. */
   push(value: number) {
+    if (this.disposed) return;
     this.pending = value;
     if (this.timer != null) return; // already waiting
     this.timer = setTimeout(() => {
       this.timer = null;
-      if (this.pending != null) {
+      if (this.pending != null && !this.disposed) {
         this.send(this.pending);
         this.pending = null;
       }
@@ -34,6 +36,7 @@ export class Throttle {
 
   /** Call on drag end. Fires the final value immediately. */
   flush() {
+    if (this.disposed) return;
     if (this.timer != null) {
       clearTimeout(this.timer);
       this.timer = null;
@@ -45,6 +48,7 @@ export class Throttle {
   }
 
   dispose() {
+    this.disposed = true;
     if (this.timer != null) {
       clearTimeout(this.timer);
       this.timer = null;

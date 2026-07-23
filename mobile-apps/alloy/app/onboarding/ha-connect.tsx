@@ -15,6 +15,7 @@ import {
 import { useRouter } from 'expo-router';
 import { useSettings } from '../../src/hooks/useSettings';
 import * as ha from '../../src/lib/ha-client';
+import { validateHaURL } from '../../src/lib/ha-client';
 
 export default function HAConnectScreen() {
   const router = useRouter();
@@ -27,8 +28,13 @@ export default function HAConnectScreen() {
 
   const handleConnect = async () => {
     setError(null);
-    if (!url.trim() || !token.trim()) {
-      setError('Enter a Home Assistant URL and long-lived access token.');
+    const urlError = validateHaURL(url);
+    if (urlError) {
+      setError(urlError);
+      return;
+    }
+    if (!token.trim()) {
+      setError('Enter a long-lived access token.');
       return;
     }
     setLoading(true);

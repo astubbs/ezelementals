@@ -49,7 +49,10 @@ export default function TestConnectionScreen() {
 
   const handleConfirm = async () => {
     const baseURL = await settings.getHaBaseURL();
-    if (!baseURL || !entityId) return;
+    if (!baseURL || !entityId) {
+      setError('Home Assistant configuration is missing. Go back and reconnect.');
+      return;
+    }
     const descriptor: VolumeTargetDescriptor = {
       type: 'homeAssistant',
       haBaseURL: baseURL,

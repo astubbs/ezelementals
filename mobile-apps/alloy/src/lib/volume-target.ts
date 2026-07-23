@@ -1,12 +1,12 @@
 /**
  * VolumeTarget interface + HA implementation.
  *
- * The hook `useVolumeTarget` consumes this interface — it does not
+ * The hook `useVolumeTarget` consumes this interface -- it does not
  * know whether it is talking to Home Assistant, a future Denon
  * proxy, or a mock. See mobile-apps/specs/volume-target.md.
  */
 
-import type { ConnectionState, VolumeRange, VolumeTargetDescriptor } from '../types';
+import type { ConnectionState, HAWebSocketMessage, VolumeRange, VolumeTargetDescriptor } from '../types';
 import * as ha from './ha-client';
 
 export interface VolumeTarget {
@@ -28,6 +28,8 @@ export class HomeAssistantTarget implements VolumeTarget {
   private config: ha.HAConfig;
   private entityId: string;
   private ws: WebSocket | null = null;
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private authFailed = false;
   private confirmedCb: ((v: number) => void) | null = null;
   private connectionCb: ((s: ConnectionState) => void) | null = null;
 
@@ -42,15 +44,25 @@ export class HomeAssistantTarget implements VolumeTarget {
   }
 
   connect() {
+    this.authFailed = false;
     this.connectionCb?.({ status: 'connecting' });
     this.connectWebSocket();
     this.fetchInitialVolume();
   }
 
   disconnect() {
+    // Cancel any pending reconnect timer first.
+    if (this.reconnectTimer != null) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
     this.ws?.close();
     this.ws = null;
-    this.connectionCb?.({ status: 'disconnected' });
+    // Null out callbacks so any in-flight async (REST promise,
+    // WS events arriving after close) cannot call setState on
+    // an unmounted component.
+    this.confirmedCb = null;
+    this.connectionCb = null;
   }
 
   setVolume(intent: number) {
@@ -89,7 +101,7 @@ export class HomeAssistantTarget implements VolumeTarget {
 
     ws.onmessage = (event) => {
       try {
-        const msg = JSON.parse(event.data);
+        const msg = JSON.parse(event.data) as HAWebSocketMessage;
         if (msg.type === 'auth_ok') {
           ws.send(JSON.stringify({
             id: 1,
@@ -99,7 +111,9 @@ export class HomeAssistantTarget implements VolumeTarget {
           return;
         }
         if (msg.type === 'auth_invalid') {
+          this.authFailed = true;
           this.connectionCb?.({ status: 'error', message: 'HA rejected the token.' });
+          ws.close(); // Clean close so onclose fires but reconnect is blocked by authFailed.
           return;
         }
         // state_changed event for our entity
@@ -122,10 +136,14 @@ export class HomeAssistantTarget implements VolumeTarget {
 
     ws.onclose = () => {
       this.connectionCb?.({ status: 'disconnected' });
-      // Reconnect after a delay.
-      setTimeout(() => {
-        if (this.ws === ws) this.connectWebSocket();
-      }, 3000);
+      // Reconnect after a delay, unless this was an intentional
+      // disconnect (this.ws nulled) or auth failed permanently.
+      if (this.ws === ws && !this.authFailed) {
+        this.reconnectTimer = setTimeout(() => {
+          this.reconnectTimer = null;
+          if (this.ws === ws) this.connectWebSocket();
+        }, 3000);
+      }
     };
   }
 

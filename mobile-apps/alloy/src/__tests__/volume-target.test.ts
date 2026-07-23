@@ -95,16 +95,17 @@ describe('HomeAssistantTarget', () => {
       expect(init.headers.Authorization).toBe('Bearer fake-token');
     });
 
-    it('clamps values outside the 0..100 range', async () => {
+    it('sends volume_level above 1.0 when intent exceeds range max', async () => {
       const t = new HomeAssistantTarget(makeDescriptor());
       t.setToken('tok');
 
-      // The hook clamps before calling setVolume, but the target
-      // should itself send reasonable values if called directly.
-      t.setVolume(42);
+      // The target does NOT clamp (the hook does). Verify that an
+      // out-of-range intent produces an out-of-range volume_level
+      // so the caller knows clamping must happen upstream.
+      t.setVolume(150);
       await new Promise((r) => setImmediate(r));
       const body = JSON.parse(((globalThis.fetch as jest.Mock).mock.calls[0][1]).body);
-      expect(body.volume_level).toBeCloseTo(0.42, 5);
+      expect(body.volume_level).toBe(1.5);
     });
   });
 

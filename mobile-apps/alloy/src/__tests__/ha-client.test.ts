@@ -1,4 +1,4 @@
-import { filterAvrEntities, wsURL } from '../lib/ha-client';
+import { filterAvrEntities, wsURL, validateHaURL } from '../lib/ha-client';
 import type { HAState } from '../types';
 
 function haEntity(
@@ -70,5 +70,32 @@ describe('wsURL', () => {
   it('handles a trailing slash on the base URL', () => {
     const url = wsURL({ baseURL: 'http://ha.local:8123/', token: 't' });
     expect(url).toBe('ws://ha.local:8123/api/websocket');
+  });
+
+  it('throws on unsupported schemes', () => {
+    expect(() => wsURL({ baseURL: 'ftp://ha.local', token: 't' })).toThrow('Unsupported URL scheme');
+    expect(() => wsURL({ baseURL: 'ha.local:8123', token: 't' })).toThrow('Unsupported URL scheme');
+  });
+});
+
+describe('validateHaURL', () => {
+  it('accepts http:// URLs', () => {
+    expect(validateHaURL('http://ha.local:8123')).toBeNull();
+  });
+
+  it('accepts https:// URLs', () => {
+    expect(validateHaURL('https://ha.example.com')).toBeNull();
+  });
+
+  it('rejects URLs without a scheme', () => {
+    expect(validateHaURL('ha.local:8123')).toMatch(/http:\/\/ or https:\/\//);
+  });
+
+  it('rejects empty strings', () => {
+    expect(validateHaURL('')).toMatch(/required/);
+  });
+
+  it('rejects non-HTTP schemes', () => {
+    expect(validateHaURL('ftp://ha.local')).toMatch(/http:\/\/ or https:\/\//);
   });
 });
